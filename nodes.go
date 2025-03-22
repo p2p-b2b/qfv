@@ -56,95 +56,11 @@ type Node interface {
 	Type() NodeType
 }
 
-// FieldsNode represents the fields part of the query
-type FieldsNode struct {
-	Fields []string
-}
-
-func (n FieldsNode) Type() NodeType {
-	return NodeTypeFieldList
-}
-
-// SortNode represents the sort part of the query
-type SortNode struct {
-	Fields []SortFieldNode
-}
-
-func (n SortNode) Type() NodeType {
-	return NodeTypeSort
-}
-
-// SortFieldNode represents a single field in the sort expression
-type SortFieldNode struct {
-	Field     string
-	Direction SortDirection
-}
-
-func (n SortFieldNode) Type() NodeType {
-	return NodeTypeSortField
-}
-
-// FilterNode represents the filter part of the query
-type FilterNode struct {
-	Root FilterExprNode
-}
-
-func (n FilterNode) Type() NodeType {
-	return NodeTypeFilter
-}
-
-// FilterExprNode is the interface for all filter expression nodes
-type FilterExprNode interface {
-	Node
-}
-
-// LogicalOpNode represents a logical operation (AND, OR, NOT)
-type LogicalOpNode struct {
-	Operator LogicalOperator
-	Left     FilterExprNode
-	Right    FilterExprNode // nil for NOT
-}
-
-func (n LogicalOpNode) Type() NodeType {
-	return NodeTypeLogicalOp
-}
-
-// ComparisonNode represents a comparison operation (=, !=, etc.)
-type ComparisonNode struct {
-	Field    string
-	Operator ComparisonOperator
-	Value    Node // StringNode or IdentifierNode
-}
-
-func (n ComparisonNode) Type() NodeType {
-	return NodeTypeComparisonOp
-}
-
-// ComparisonPredicatesNode represents a checker operation (LIKE, IN, etc.)
-type ComparisonPredicatesNode struct {
-	Field    string
-	Operator ComparisonPredicatesOperator
-	Value    Node // StringNode or IdentifierNode
-}
-
-func (n ComparisonPredicatesNode) Type() NodeType {
-	return NodeTypeCheckerOp
-}
-
-// StringNode represents a string literal
-type StringNode struct {
-	Value string
-}
-
-func (n StringNode) Type() NodeType {
-	return NodeTypeString
-}
-
-// IdentifierNode represents an identifier
-type IdentifierNode struct {
-	Value string
-}
-
-func (n IdentifierNode) Type() NodeType {
-	return NodeTypeIdentifier
+// Validator is the interface for all validators
+// It defines a method to validate the fields of a query
+// and return a Node representing the parsed fields.
+// The Validate method takes a string input representing the fields
+// and returns a Node and an error.
+type Validator interface {
+	Validate(fields string) (Node, error)
 }

@@ -19,7 +19,9 @@ func main() {
 	fmt.Printf("Allowed Filter fields: %v\n", allowedFilterFields)
 
 	// Create a new parser with the allowed fields
-	p := qfv.NewParser(allowedSortFields, allowedFieldsFields, allowedFilterFields)
+	sortParser := qfv.NewSortParser(allowedSortFields)
+	fieldsParser := qfv.NewFieldsParser(allowedFieldsFields)
+	filterParser := qfv.NewFilterParser(allowedFilterFields)
 
 	// Example inputs
 	sortInput := "first_name ASC,created_at DESC"
@@ -30,7 +32,17 @@ func main() {
 	fmt.Printf("Fields input: %s\n", fieldsInput)
 
 	// Validate the inputs
-	sortNode, fieldsNode, filterNode, err := p.Validate(sortInput, fieldsInput, filterInput)
+	sortNode, err := sortParser.Validate(sortInput)
+	if err != nil {
+		log.Fatalf("Validation error: %v", err)
+	}
+
+	fieldsNode, err := fieldsParser.Validate(fieldsInput)
+	if err != nil {
+		log.Fatalf("Validation error: %v", err)
+	}
+
+	filterNode, err := filterParser.Validate(filterInput)
 	if err != nil {
 		log.Fatalf("Validation error: %v", err)
 	}
