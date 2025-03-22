@@ -54,11 +54,15 @@ func (p *SortParser) Parse(input string) (SortNode, error) {
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
-			continue
+			return SortNode{}, fmt.Errorf("empty sort expression: %s", input)
 		}
 
 		sortParts := strings.Fields(part)
 		if len(sortParts) == 0 {
+			return SortNode{}, fmt.Errorf("invalid sort expression: %s", part)
+		}
+
+		if len(sortParts) > 2 {
 			return SortNode{}, fmt.Errorf("invalid sort expression: %s", part)
 		}
 
@@ -68,6 +72,10 @@ func (p *SortParser) Parse(input string) (SortNode, error) {
 		}
 
 		direction := SortAsc
+		if len(sortParts) == 1 {
+			return SortNode{}, fmt.Errorf("missing sort direction for field: %s", fieldName)
+		}
+
 		if len(sortParts) > 1 {
 			dirStr := strings.ToUpper(sortParts[1])
 

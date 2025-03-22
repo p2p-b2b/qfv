@@ -1,5 +1,14 @@
 package qfv
 
+// Validator is the interface for all validators
+// It defines a method to validate the fields of a query
+// and return a Node representing the parsed fields.
+// The Validate method takes a string input representing the fields
+// and returns a Node and an error.
+type Validator interface {
+	Validate(fields string) (Node, error)
+}
+
 // NodeType represents the type of AST node
 // It is used to identify the kind of node in the AST
 // and to provide type safety when working with different node types.
@@ -54,13 +63,4 @@ func (nt NodeType) String() string {
 // Node is the base interface for all AST nodes
 type Node interface {
 	Type() NodeType
-}
-
-// Validator is the interface for all validators
-// It defines a method to validate the fields of a query
-// and return a Node representing the parsed fields.
-// The Validate method takes a string input representing the fields
-// and returns a Node and an error.
-type Validator interface {
-	Validate(fields string) (Node, error)
 }
