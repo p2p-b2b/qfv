@@ -21,7 +21,7 @@ func main() {
 	// Create a new parser with the allowed fields
 	sortParser := qfv.NewSortParser(allowedSortFields)
 	fieldsParser := qfv.NewFieldsParser(allowedFieldsFields)
-	filterParser := qfv.NewFilterParser(allowedFilterFields)
+	// filterParser := qfv.NewFilterParser(allowedFilterFields)
 
 	// Example inputs
 	sortInput := "first_name ASC,created_at DESC"
@@ -42,10 +42,10 @@ func main() {
 		log.Fatalf("Validation error: %v", err)
 	}
 
-	filterNode, err := filterParser.Validate(filterInput)
-	if err != nil {
-		log.Fatalf("Validation error: %v", err)
-	}
+	// filterNode, err := filterParser.Validate(filterInput)
+	// if err != nil {
+	// 	log.Fatalf("Validation error: %v", err)
+	// }
 
 	// Print the parsed sort fields
 	fmt.Println("Sort fields:")
@@ -63,46 +63,39 @@ func main() {
 	fmt.Println("\nFilter is valid")
 
 	// You could implement a function to print the filter AST for debugging
-	printFilterTree(filterNode.Root, 0)
+	// printFilterTree(filterNode.Root, 0)
 }
 
-// Helper function to print the filter AST
-func printFilterTree(node qfv.FilterExprNode, indent int) {
-	indentStr := ""
-	for range indent {
-		indentStr += "  "
-	}
+// // Helper function to print the filter AST
+// func printFilterTree(node qfv.FilterExpressionNode, indent int) {
+// 	indentStr := ""
+// 	for range indent {
+// 		indentStr += "  "
+// 	}
 
-	switch n := node.(type) {
-	case qfv.LogicalOpNode:
-		fmt.Printf("%s%s\n", indentStr, n.Operator)
-		fmt.Printf("%sLeft:\n", indentStr)
-		printFilterTree(n.Left, indent+1)
-		if n.Right != nil {
-			fmt.Printf("%sRight:\n", indentStr)
-			printFilterTree(n.Right, indent+1)
-		}
-	case qfv.ComparisonNode:
-		fmt.Printf("%s%s %s ", indentStr, n.Field, n.Operator)
-		switch v := n.Value.(type) {
-		case qfv.StringNode:
-			fmt.Printf("'%s'\n", v.Value)
-		case qfv.IdentifierNode:
-			fmt.Printf("%s\n", v.Value)
-		}
-	case qfv.ComparisonPredicatesNode:
-		fmt.Printf("%s%s %s ", indentStr, n.Field, n.Operator)
-		switch v := n.Value.(type) {
-		case qfv.StringNode:
-			fmt.Printf("'%s'\n", v.Value)
-		case qfv.IdentifierNode:
-			fmt.Printf("%s\n", v.Value)
-		}
-	case qfv.IdentifierNode:
-		fmt.Printf("%sIdentifier: %s\n", indentStr, n.Value)
-	case qfv.StringNode:
-		fmt.Printf("%sString: '%s'\n", indentStr, n.Value)
-	default:
-		fmt.Printf("%sUnknown node type: %T\n", indentStr, n)
-	}
-}
+// 	switch n := node.(type) {
+// 	case qfv.LogicalOperationNode:
+// 		fmt.Printf("%s%s\n", indentStr, n.Operator)
+// 		fmt.Printf("%sLeft:\n", indentStr)
+// 		printFilterTree(n.Left, indent+1)
+// 		if n.Right != nil {
+// 			fmt.Printf("%sRight:\n", indentStr)
+// 			printFilterTree(n.Right, indent+1)
+// 		}
+// 	case qfv.ComparisonNode:
+// 		fmt.Printf("%s%s %s ", indentStr, n.Field, n.Operator)
+// 		switch v := n.Value.(type) {
+// 		case qfv.StringNode:
+// 			fmt.Printf("'%s'\n", v.Value)
+// 		case qfv.IdentifierNode:
+// 			fmt.Printf("%s\n", v.Value)
+// 		}
+
+// 	case qfv.IdentifierNode:
+// 		fmt.Printf("%sIdentifier: %s\n", indentStr, n.Value)
+// 	case qfv.StringNode:
+// 		fmt.Printf("%sString: '%s'\n", indentStr, n.Value)
+// 	default:
+// 		fmt.Printf("%sUnknown node type: %T\n", indentStr, n)
+// 	}
+// }

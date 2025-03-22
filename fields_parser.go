@@ -35,7 +35,7 @@ func NewFieldsParser(allowedFields []string) *FieldsParser {
 // Parse parses the fields parameter
 func (p *FieldsParser) Parse(input string) (FieldsNode, error) {
 	if input == "" {
-		return FieldsNode{}, nil
+		return FieldsNode{}, fmt.Errorf("empty input expression")
 	}
 
 	parts := strings.Split(input, ",")
@@ -44,7 +44,7 @@ func (p *FieldsParser) Parse(input string) (FieldsNode, error) {
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
-			continue
+			return FieldsNode{}, fmt.Errorf("empty field expression: %s", input)
 		}
 
 		if _, exists := p.allowedFieldsFields[part]; !exists {
@@ -60,7 +60,7 @@ func (p *FieldsParser) Parse(input string) (FieldsNode, error) {
 // Validate validates the query parameters
 func (p *FieldsParser) Validate(input string) (FieldsNode, error) {
 	if input == "" {
-		return FieldsNode{}, nil
+		return FieldsNode{}, fmt.Errorf("empty input expression")
 	}
 
 	node, err := p.Parse(input)

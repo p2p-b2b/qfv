@@ -1,254 +1,216 @@
 package qfv
 
-import (
-	"errors"
-	"fmt"
-)
+// where_clause ::= expression
+// expression ::= term ( (AND | OR) term )*
+// term ::= NOT term
+//        | comparison_expression
+//        | BETWEEN comparison_expression AND comparison_expression
+//        | NOT BETWEEN comparison_expression AND comparison_expression
+//        | comparison_expression IS NULL
+//        | comparison_expression IS NOT NULL
+//        | comparison_expression DISTINCT comparison_expression
+//        | comparison_expression NOT DISTINCT comparison_expression
+//        | '(' expression ')'
+// comparison_expression ::= value comparison_operator value
+// value ::= field | literal
+// comparison_operator ::= '=' | '!=' | '<>' | '<=' | '<' | '>=' | '>'
+// literal ::= NUMBER | STRING | BOOLEAN
+// field ::= IDENTIFIER
 
-// FilterNode represents the filter part of the query
-type FilterNode struct {
-	Root FilterExprNode
-}
+// // FilterParser parses the query parameter for filtering
+// type FilterParser struct {
+// 	allowedFields map[string]any // any because don't allocate memory for struct{}
+// }
 
-func (n FilterNode) Type() NodeType {
-	return NodeTypeFilter
-}
+// // NewFilterParser creates a new parser with the allowed fields
+// func NewFilterParser(allowedFields []string) *FilterParser {
+// 	filterFields := make(map[string]any, len(allowedFields))
 
-// FilterParser parses the query parameter for filtering
-type FilterParser struct {
-	allowedFields map[string]any // any because don't allocate memory for struct{}
-}
+// 	for _, f := range allowedFields {
+// 		filterFields[f] = struct{}{}
+// 	}
 
-// NewFilterParser creates a new parser with the allowed fields
-func NewFilterParser(allowedFields []string) *FilterParser {
-	filterFields := make(map[string]any, len(allowedFields))
+// 	return &FilterParser{
+// 		allowedFields: filterFields,
+// 	}
+// }
 
-	for _, f := range allowedFields {
-		filterFields[f] = struct{}{}
-	}
+// // Parse parses the filter parameter
+// func (p *FilterParser) Parse(input string) (FilterNode, error) {
+// 	if input == "" {
+// 		return FilterNode{}, fmt.Errorf("empty filter expression")
+// 	}
 
-	return &FilterParser{
-		allowedFields: filterFields,
-	}
-}
+// 	lexer := newLexer(input)
+// 	tokens, err := lexer.tokenize()
+// 	if err != nil {
+// 		return FilterNode{}, err
+// 	}
 
-// Parse parses the filter parameter
-func (p *FilterParser) Parse(input string) (FilterNode, error) {
-	if input == "" {
-		return FilterNode{}, nil
-	}
+// 	parser := newFilterParser(tokens, p.allowedFields)
+// 	expr, err := parser.parse()
+// 	if err != nil {
+// 		return FilterNode{}, err
+// 	}
 
-	lex := newLexer(input)
-	tokens, err := lex.tokenize()
-	if err != nil {
-		return FilterNode{}, err
-	}
+// 	return FilterNode{Expression: expr}, nil
+// }
 
-	parser := newFilterParser(tokens, p.allowedFields)
-	expr, err := parser.parse()
-	if err != nil {
-		return FilterNode{}, err
-	}
+// func (p *FilterParser) Validate(input string) (FilterNode, error) {
+// 	if input == "" {
+// 		return FilterNode{}, nil
+// 	}
 
-	return FilterNode{Root: expr}, nil
-}
+// 	node, err := p.Parse(input)
+// 	if err != nil {
+// 		return FilterNode{}, err
+// 	}
 
-func (p *FilterParser) Validate(input string) (FilterNode, error) {
-	if input == "" {
-		return FilterNode{}, nil
-	}
+// 	return node, nil
+// }
 
-	node, err := p.Parse(input)
-	if err != nil {
-		return FilterNode{}, err
-	}
+// // filterParser is a parser for filter expressions
+// type filterParser struct {
+// 	tokens        []Token
+// 	lenTokens     int
+// 	pos           int
+// 	allowedFields map[string]any
+// }
 
-	return node, nil
-}
+// // newFilterParser creates a new filter parser
+// func newFilterParser(tokens []Token, allowedFields map[string]any) *filterParser {
+// 	return &filterParser{
+// 		tokens:        tokens,
+// 		lenTokens:     len(tokens),
+// 		pos:           0,
+// 		allowedFields: allowedFields,
+// 	}
+// }
 
-// filterParser is a parser for filter expressions
-type filterParser struct {
-	tokens        []Token
-	pos           int
-	allowedFields map[string]any
-}
+// // parse parses the filter expression
+// func (p *filterParser) parse() (FilterNode, error) {
+// 	return p.parseExpression()
+// }
 
-// newFilterParser creates a new filter parser
-func newFilterParser(tokens []Token, allowedFields map[string]any) *filterParser {
-	return &filterParser{
-		tokens:        tokens,
-		pos:           0,
-		allowedFields: allowedFields,
-	}
-}
+// // parseExpression parses a logical expression
+// func (p *filterParser) parseExpression() (FilterNode, error) {
+// 	left, err := p.parseComparison()
+// 	if err != nil {
+// 		return FilterNode{}, err
+// 	}
 
-// parse parses the filter expression
-func (p *filterParser) parse() (FilterExprNode, error) {
-	return p.parseExpression()
-}
+// 	for p.pos < p.lenTokens && p.tokens[p.pos].Type == TokenLogicalOperation {
+// 		op := p.tokens[p.pos].Value
+// 		p.pos++
 
-// parseExpression parses a logical expression
-func (p *filterParser) parseExpression() (FilterExprNode, error) {
-	left, err := p.parseComparison()
-	if err != nil {
-		return nil, err
-	}
+// 		if op == OperatorNot.String() {
+// 			right, err := p.parseComparison()
+// 			if err != nil {
+// 				return FilterNode{}, err
+// 			}
 
-	for p.pos < len(p.tokens) && p.tokens[p.pos].Type == "LOGICAL_OP" {
-		op := p.tokens[p.pos].Value
-		p.pos++
+// 			left = BinaryOperatorNode{
+// 				Operator: OperatorNot,
+// 				Left:     right,
+// 				Right:    nil,
+// 			}
+// 		} else {
+// 			right, err := p.parseComparison()
+// 			if err != nil {
+// 				return FilterNode{}, err
+// 			}
 
-		if op == "NOT" {
-			right, err := p.parseComparison()
-			if err != nil {
-				return nil, err
-			}
-			left = LogicalOpNode{
-				Operator: LogicalOperator(op),
-				Left:     right,
-				Right:    nil,
-			}
-		} else {
-			right, err := p.parseComparison()
-			if err != nil {
-				return nil, err
-			}
-			left = LogicalOpNode{
-				Operator: LogicalOperator(op),
-				Left:     left,
-				Right:    right,
-			}
-		}
-	}
+// 			left = BinaryOperatorNode{
+// 				Operator: Operator(op),
+// 				Left:     left,
+// 				Right:    right,
+// 			}
+// 		}
+// 	}
 
-	return left, nil
-}
+// 	return left, nil
+// }
 
-// parseComparison parses a comparison expression
-func (p *filterParser) parseComparison() (FilterExprNode, error) {
-	if p.pos >= len(p.tokens) {
-		return nil, errors.New("unexpected end of input")
-	}
+// // parseComparison parses a comparison expression
+// func (p *filterParser) parseComparison() (FilterNode, error) {
+// 	if p.pos >= p.lenTokens {
+// 		return nil, errors.New("unexpected end of input")
+// 	}
 
-	if p.tokens[p.pos].Type == "LPAREN" {
-		p.pos++ // Skip '('
-		expr, err := p.parseExpression()
-		if err != nil {
-			return nil, err
-		}
+// 	if p.tokens[p.pos].Type == TokenLPAREN {
+// 		p.pos++ // Skip '('
+// 		expr, err := p.parseExpression()
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		if p.pos >= len(p.tokens) || p.tokens[p.pos].Type != "RPAREN" {
-			return nil, errors.New("missing closing parenthesis")
-		}
-		p.pos++ // Skip ')'
-		return expr, nil
-	}
+// 		if p.pos >= p.lenTokens || p.tokens[p.pos].Type != TokenRPAREN {
+// 			return nil, errors.New("missing closing parenthesis")
+// 		}
 
-	if p.tokens[p.pos].Type == "LOGICAL_OP" && p.tokens[p.pos].Value == "NOT" {
-		p.pos++ // Skip NOT
-		expr, err := p.parseComparison()
-		if err != nil {
-			return nil, err
-		}
-		return LogicalOpNode{
-			Operator: OpNot,
-			Left:     expr,
-			Right:    nil,
-		}, nil
-	}
+// 		p.pos++ // Skip ')'
+// 		return expr, nil
+// 	}
 
-	if p.tokens[p.pos].Type != "IDENTIFIER" {
-		return nil, fmt.Errorf("expected field name, got %s", p.tokens[p.pos].Value)
-	}
+// 	if p.tokens[p.pos].Type == TokenLogicalOperation && p.tokens[p.pos].Value == OperatorNot.String() {
+// 		p.pos++ // Skip NOT
+// 		expr, err := p.parseComparison()
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-	field := p.tokens[p.pos].Value
-	if _, exists := p.allowedFields[field]; !exists {
-		return nil, fmt.Errorf("unknown field: %s", field)
-	}
-	p.pos++
+// 		return LogicalOperationNode{
+// 			Operator: OperatorNot,
+// 			Left:     expr,
+// 			Right:    nil,
+// 		}, nil
+// 	}
 
-	if p.pos >= len(p.tokens) || p.tokens[p.pos].Type != "OPERATOR" {
-		return nil, errors.New("expected comparison operator")
-	}
+// 	if p.tokens[p.pos].Type != TokenIdentifier {
+// 		return nil, fmt.Errorf("expected field name, got %s", p.tokens[p.pos].Value)
+// 	}
 
-	operator := ComparisonOperator(p.tokens[p.pos].Value)
-	p.pos++
+// 	field := p.tokens[p.pos].Value
+// 	if _, exists := p.allowedFields[field]; !exists {
+// 		return nil, fmt.Errorf("unknown field: %s", field)
+// 	}
+// 	p.pos++
 
-	if p.pos >= len(p.tokens) {
-		return nil, errors.New("expected value after operator")
-	}
+// 	if p.pos >= p.lenTokens || p.tokens[p.pos].Type != TokenOperator {
+// 		return nil, errors.New("expected comparison operator")
+// 	}
 
-	var value Node
-	switch p.tokens[p.pos].Type {
-	case "STRING":
-		value = StringNode{Value: p.tokens[p.pos].Value}
-	case "IDENTIFIER":
-		value = IdentifierNode{Value: p.tokens[p.pos].Value}
-	default:
-		return nil, fmt.Errorf("expected string or identifier, got %s", p.tokens[p.pos].Type)
-	}
+// 	operator := Operator(p.tokens[p.pos].Value)
+// 	p.pos++
 
-	p.pos++
+// 	if p.pos >= p.lenTokens {
+// 		return nil, errors.New("expected value after operator")
+// 	}
 
-	return ComparisonNode{
-		Field:    field,
-		Operator: operator,
-		Value:    value,
-	}, nil
-}
+// 	var value Node
+// 	switch p.tokens[p.pos].Type {
+// 	case TokenString:
+// 		value = StringNode{Value: p.tokens[p.pos].Value}
+// 	case TokenIdentifier:
+// 		value = IdentifierNode{Value: p.tokens[p.pos].Value}
+// 	case TokenBoolean:
+// 		value = BooleanNode{Value: p.tokens[p.pos].Value == "true"}
+// 	case TokenNumber:
+// 		v, err := strconv.ParseFloat(p.tokens[p.pos].Value, 64)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("invalid number: %s", p.tokens[p.pos].Value)
+// 		}
+// 		value = NumberNode{Value: v}
 
-// FilterExprNode is the interface for all filter expression nodes
-type FilterExprNode interface {
-	Node
-}
+// 	default:
+// 		return nil, fmt.Errorf("expected string or identifier, got %s", p.tokens[p.pos].Type)
+// 	}
 
-// LogicalOpNode represents a logical operation (AND, OR, NOT)
-type LogicalOpNode struct {
-	Operator LogicalOperator
-	Left     FilterExprNode
-	Right    FilterExprNode // nil for NOT
-}
+// 	p.pos++
 
-func (n LogicalOpNode) Type() NodeType {
-	return NodeTypeLogicalOp
-}
-
-// ComparisonNode represents a comparison operation (=, !=, etc.)
-type ComparisonNode struct {
-	Field    string
-	Operator ComparisonOperator
-	Value    Node // StringNode or IdentifierNode
-}
-
-func (n ComparisonNode) Type() NodeType {
-	return NodeTypeComparisonOp
-}
-
-// ComparisonPredicatesNode represents a checker operation (LIKE, IN, etc.)
-type ComparisonPredicatesNode struct {
-	Field    string
-	Operator ComparisonPredicatesOperator
-	Value    Node // StringNode or IdentifierNode
-}
-
-func (n ComparisonPredicatesNode) Type() NodeType {
-	return NodeTypeCheckerOp
-}
-
-// StringNode represents a string literal
-type StringNode struct {
-	Value string
-}
-
-func (n StringNode) Type() NodeType {
-	return NodeTypeString
-}
-
-// IdentifierNode represents an identifier
-type IdentifierNode struct {
-	Value string
-}
-
-func (n IdentifierNode) Type() NodeType {
-	return NodeTypeIdentifier
-}
+// 	return ComparisonNode{
+// 		Field:    field,
+// 		Operator: operator,
+// 		Value:    value,
+// 	}, nil
+// }

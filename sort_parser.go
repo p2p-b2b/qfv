@@ -45,7 +45,7 @@ func NewSortParser(allowedFields []string) *SortParser {
 // Parse parses the sort parameter
 func (p *SortParser) Parse(input string) (SortNode, error) {
 	if input == "" {
-		return SortNode{}, nil
+		return SortNode{}, fmt.Errorf("empty input expression")
 	}
 
 	parts := strings.Split(input, ",")
@@ -100,7 +100,7 @@ func (p *SortParser) Parse(input string) (SortNode, error) {
 
 func (p *SortParser) Validate(input string) (SortNode, error) {
 	if input == "" {
-		return SortNode{}, nil
+		return SortNode{}, fmt.Errorf("empty input expression")
 	}
 
 	node, err := p.Parse(input)
