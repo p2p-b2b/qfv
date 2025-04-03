@@ -1,6 +1,7 @@
 package qfv
 
 import (
+	"fmt"
 	"strings"
 	"text/scanner"
 )
@@ -47,9 +48,7 @@ func (l *Lexer) Parse() {
 				tok = TokenOperatorAnd
 			case "OR":
 				tok = TokenOperatorOr
-			case "NOT":
-				tok = TokenOperatorNot
-			case "LIKE": // , "IN", "BETWEEN", "DISTINCT", "IS NOT NULL", "IS NULL", "NOT LIKE", "NOT IN", "NOT BETWEEN", "NOT DISTINCT"
+			case "LIKE":
 				tok = TokenOperatorLike
 			case "IN":
 				tok = TokenOperatorIn
@@ -59,14 +58,42 @@ func (l *Lexer) Parse() {
 				tok = TokenOperatorDistinct
 			case "IS":
 				next := l.Next().Value
-				if next == "NOT" {
-					tok = TokenOperatorIsNotNull
+				upperNext := strings.ToUpper(next)
+				if upperNext == "NOT" {
+					nextNext := l.Next().Value
+					upperNextNext := strings.ToUpper(nextNext)
+					if upperNextNext == "NULL" {
+						tok = TokenOperatorIsNotNull
+						lit = "IS NOT NULL"
+					} else {
+						l.Backup() // Go back to NOT
+						l.Backup() // Go back to IS
+						tok = TokenOperatorNot
+						l.Backup()
+					}
 				} else {
 					l.Backup() // Go back to IS
 					tok = TokenOperatorIsNull
 				}
+				fmt.Printf("tok after IS: %v\n", tok)
 			case "TRUE", "FALSE", "YES", "NO":
 				tok = TokenBoolean
+			case "NOT":
+				next := l.Next().Value
+				upperNext := strings.ToUpper(next)
+				switch upperNext {
+				case "LIKE":
+					tok = TokenOperatorNotLike
+				case "IN":
+					tok = TokenOperatorNotIn
+				case "BETWEEN":
+					tok = TokenOperatorNotBetween
+				case "DISTINCT":
+					tok = TokenOperatorNotDistinct
+				default:
+					l.Backup()
+					tok = TokenOperatorNot
+				}
 			default:
 				tok = TokenIdentifier
 			}

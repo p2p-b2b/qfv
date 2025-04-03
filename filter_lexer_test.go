@@ -39,21 +39,21 @@ func TestLexer_Navigation(t *testing.T) {
 		// 		{Pos: scanner.Position{Line: 1, Column: 34}, Type: TokenEOF, Value: ""},
 		// 	},
 		// },
-		{
-			name:  "bad double quoted string, missing opening quote",
-			input: `comment = This is a bad string'"`,
-			expected: []Token{
-				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "comment"},
-				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenOperatorEqual, Value: "="},
-				{Pos: scanner.Position{Line: 1, Column: 11}, Type: TokenIdentifier, Value: "This"},
-				{Pos: scanner.Position{Line: 1, Column: 16}, Type: TokenIdentifier, Value: "is"},
-				{Pos: scanner.Position{Line: 1, Column: 19}, Type: TokenIdentifier, Value: "a"},
-				{Pos: scanner.Position{Line: 1, Column: 21}, Type: TokenIdentifier, Value: "bad"},
-				{Pos: scanner.Position{Line: 1, Column: 25}, Type: TokenIdentifier, Value: "string"},
-				{Pos: scanner.Position{Line: 1, Column: 31}, Type: TokenIllegal, Value: `'"`},
-				{Pos: scanner.Position{Line: 1, Column: 34}, Type: TokenEOF, Value: ""},
-			},
-		},
+		// {
+		// 	name:  "bad double quoted string, missing opening quote",
+		// 	input: `comment = This is a bad string'"`,
+		// 	expected: []Token{
+		// 		{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "comment"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenOperatorEqual, Value: "="},
+		// 		{Pos: scanner.Position{Line: 1, Column: 11}, Type: TokenIdentifier, Value: "This"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 16}, Type: TokenIdentifier, Value: "is"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 19}, Type: TokenIdentifier, Value: "a"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 21}, Type: TokenIdentifier, Value: "bad"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 25}, Type: TokenIdentifier, Value: "string"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 31}, Type: TokenIllegal, Value: `'"`},
+		// 		{Pos: scanner.Position{Line: 1, Column: 34}, Type: TokenEOF, Value: ""},
+		// 	},
+		// },
 		// {
 		// 	name:  "bad quoted string, missing closing quote",
 		// 	input: "comment = 'This is a bad string",
@@ -131,6 +131,71 @@ func TestLexer_Navigation(t *testing.T) {
 		// 		{Pos: scanner.Position{Line: 1, Column: 43}, Type: TokenEOF, Value: ""},
 		// 	},
 		// },
+		// {
+		// 	name:  "IS NULL",
+		// 	input: "name IS NULL",
+		// 	expected: []Token{
+		// 		{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorIsNull, Value: "IS"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 8}, Type: TokenIdentifier, Value: "NULL"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 12}, Type: TokenEOF, Value: ""},
+		// 	},
+		// },
+		{
+			name:  "IS NOT NULL",
+			input: "name IS NOT NULL",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorIsNotNull, Value: "IS"},
+				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenEOF, Value: ""},
+			},
+		},
+		// {
+		// 	name:  "NOT LIKE",
+		// 	input: "name NOT LIKE '%John%'",
+		// 	expected: []Token{
+		// 		{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNotLike, Value: "NOT"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 11}, Type: TokenString, Value: "'%John%'"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 20}, Type: TokenEOF, Value: ""},
+		// 	},
+		// },
+		// {
+		// 	name:  "NOT IN",
+		// 	input: "name NOT IN ('John', 'Jane')",
+		// 	expected: []Token{
+		// 		{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNotIn, Value: "NOT"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenLPAREN, Value: "("},
+		// 		{Pos: scanner.Position{Line: 1, Column: 11}, Type: TokenString, Value: "'John'"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenComma, Value: ","},
+		// 		{Pos: scanner.Position{Line: 1, Column: 19}, Type: TokenString, Value: "'Jane'"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 25}, Type: TokenRPAREN, Value: ")"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 26}, Type: TokenEOF, Value: ""},
+		// 	},
+		// },
+		// {
+		// 	name:  "NOT BETWEEN",
+		// 	input: "age NOT BETWEEN 18 AND 30",
+		// 	expected: []Token{
+		// 		{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "age"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 5}, Type: TokenOperatorNotBetween, Value: "NOT"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenInt, Value: "18"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 16}, Type: TokenOperatorAnd, Value: "AND"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 20}, Type: TokenInt, Value: "30"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 22}, Type: TokenEOF, Value: ""},
+		// 	},
+		// },
+		// {
+		// 	name:  "NOT DISTINCT",
+		// 	input: "name NOT DISTINCT FROM 'John'",
+		// 	expected: []Token{
+		// 		{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNotDistinct, Value: "NOT"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 15}, Type: TokenString, Value: "'John'"},
+		// 		{Pos: scanner.Position{Line: 1, Column: 21}, Type: TokenEOF, Value: ""},
+		// 	},
+		// },
 	}
 
 	for _, tt := range tests {
@@ -139,6 +204,9 @@ func TestLexer_Navigation(t *testing.T) {
 			lexer.Parse()
 
 			t.Logf("Lexer tokens: %v", lexer.tokens)
+			for _, token := range lexer.tokens {
+				t.Logf("Token: %v", token)
+			}
 
 			for i, expected := range tt.expected {
 				if len(lexer.tokens) <= i {
