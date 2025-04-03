@@ -56,17 +56,3 @@ func (p *FieldsParser) Parse(input string) (FieldsNode, error) {
 
 	return FieldsNode{Fields: fields}, nil
 }
-
-// Validate validates the query parameters
-func (p *FieldsParser) Validate(input string) (FieldsNode, error) {
-	if input == "" {
-		return FieldsNode{}, fmt.Errorf("empty input expression")
-	}
-
-	node, err := p.Parse(input)
-	if err != nil {
-		return FieldsNode{}, err
-	}
-
-	return node, nil
-}

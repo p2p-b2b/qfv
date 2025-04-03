@@ -1,22 +1,5 @@
 package qfv
 
-// where_clause ::= expression
-// expression ::= term ( (AND | OR) term )*
-// term ::= NOT term
-//        | comparison_expression
-//        | BETWEEN comparison_expression AND comparison_expression
-//        | NOT BETWEEN comparison_expression AND comparison_expression
-//        | comparison_expression IS NULL
-//        | comparison_expression IS NOT NULL
-//        | comparison_expression DISTINCT comparison_expression
-//        | comparison_expression NOT DISTINCT comparison_expression
-//        | '(' expression ')'
-// comparison_expression ::= value comparison_operator value
-// value ::= field | literal
-// comparison_operator ::= '=' | '!=' | '<>' | '<=' | '<' | '>=' | '>'
-// literal ::= NUMBER | STRING | BOOLEAN
-// field ::= IDENTIFIER
-
 // // FilterParser parses the query parameter for filtering
 // type FilterParser struct {
 // 	allowedFields map[string]any // any because don't allocate memory for struct{}

@@ -32,12 +32,12 @@ func main() {
 	fmt.Printf("Fields input: %s\n", fieldsInput)
 
 	// Validate the inputs
-	sortNode, err := sortParser.Validate(sortInput)
+	sortNode, err := sortParser.Parse(sortInput)
 	if err != nil {
 		log.Fatalf("Validation error: %v", err)
 	}
 
-	fieldsNode, err := fieldsParser.Validate(fieldsInput)
+	fieldsNode, err := fieldsParser.Parse(fieldsInput)
 	if err != nil {
 		log.Fatalf("Validation error: %v", err)
 	}

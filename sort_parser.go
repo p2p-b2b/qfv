@@ -5,6 +5,18 @@ import (
 	"strings"
 )
 
+// SortDirection represents the sorting direction in sort expressions
+type SortDirection string
+
+const (
+	SortAsc  SortDirection = "ASC"
+	SortDesc SortDirection = "DESC"
+)
+
+func (sd SortDirection) String() string {
+	return string(sd)
+}
+
 // SortFieldNode represents a single field in the sort expression
 type SortFieldNode struct {
 	Field     string
@@ -96,17 +108,4 @@ func (p *SortParser) Parse(input string) (SortNode, error) {
 	}
 
 	return SortNode{Fields: fields}, nil
-}
-
-func (p *SortParser) Validate(input string) (SortNode, error) {
-	if input == "" {
-		return SortNode{}, fmt.Errorf("empty input expression")
-	}
-
-	node, err := p.Parse(input)
-	if err != nil {
-		return SortNode{}, err
-	}
-
-	return node, nil
 }
