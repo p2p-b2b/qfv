@@ -13,8 +13,8 @@ permissions:
   id-token: write
 
 jobs:
-  test:
-    name: Test
+  release:
+    name: Release
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -69,3 +69,5 @@ jobs:
           name: ${{ github.ref_name }}
           draft: false
           prerelease: false
+          generate_release_notes: true
+          make_latest: true
