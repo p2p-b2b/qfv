@@ -34,6 +34,14 @@ func (p *FilterParser) Parse(input string) (Node, error) {
 	p.lexer = NewLexer(input)
 	p.lexer.Parse()
 	p.errors = nil
+
+	// Check for illegal tokens in the input
+	for _, token := range p.lexer.tokens {
+		if token.Type == TokenIllegal {
+			p.addError(fmt.Errorf("illegal token: %s", token.Value))
+		}
+	}
+
 	p.nextToken()
 
 	if p.currentToken.Type == TokenEOF {

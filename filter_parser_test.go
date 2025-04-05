@@ -396,6 +396,30 @@ func TestFilterParser_Parse(t *testing.T) {
 			allowedFields: []string{"name", "age", "status"},
 			wantErr:       true,
 		},
+		{
+			name:          "syntax error - invalid operator",
+			input:         "name ? 'John'",
+			allowedFields: []string{"name", "age", "status"},
+			wantErr:       true,
+		},
+		{
+			name:          "syntax error - invalid token",
+			input:         "name = 'John' AND",
+			allowedFields: []string{"name", "age", "status"},
+			wantErr:       true,
+		},
+		{
+			name:          "syntax error - missing value after operator",
+			input:         "name =",
+			allowedFields: []string{"name", "age", "status"},
+			wantErr:       true,
+		},
+		{
+			name:          "syntax error - invalid character",
+			input:         "name = 'John' @ age > 30",
+			allowedFields: []string{"name", "age", "status"},
+			wantErr:       true,
+		},
 	}
 
 	for _, tt := range tests {
