@@ -1,7 +1,6 @@
 package qfv
 
 import (
-	"fmt"
 	"strings"
 	"text/scanner"
 )
@@ -55,93 +54,70 @@ func (l *Lexer) Parse() {
 			case "BETWEEN":
 				tok = TokenOperatorBetween
 			case "DISTINCT":
-				tok = TokenOperatorDistinct
+				tok = TokenOperatorDistinct // Or TokenKeywordDistinct?
 			case "IS":
-				next := l.Next().Value
-				upperNext := strings.ToUpper(next)
-				if upperNext == "NOT" {
-					nextNext := l.Next().Value
-					upperNextNext := strings.ToUpper(nextNext)
-					if upperNextNext == "NULL" {
-						tok = TokenOperatorIsNotNull
-						lit = "IS NOT NULL"
-					} else {
-						l.Backup() // Go back to NOT
-						l.Backup() // Go back to IS
-						tok = TokenOperatorNot
-						l.Backup()
-					}
-				} else {
-					l.Backup() // Go back to IS
-					tok = TokenOperatorIsNull
-				}
-				fmt.Printf("tok after IS: %v\n", tok)
+				// Simplify: Always emit IS token. Let parser handle "IS NULL" / "IS NOT NULL".
+				tok = TokenOperatorIsNull // Using IS NULL token type for IS keyword
+				lit = "IS"
+				// fmt.Printf("tok after IS: %v, lit: %s\n", tok, lit) // Debug print removed
 			case "TRUE", "FALSE", "YES", "NO":
 				tok = TokenBoolean
+			case "NULL": // Handle NULL as an identifier/keyword if needed separately
+				tok = TokenIdentifier // Or a specific TokenNull? Let's use Identifier for now.
+				lit = "NULL"
 			case "NOT":
-				next := l.Next().Value
-				upperNext := strings.ToUpper(next)
-				switch upperNext {
-				case "LIKE":
-					tok = TokenOperatorNotLike
-				case "IN":
-					tok = TokenOperatorNotIn
-				case "BETWEEN":
-					tok = TokenOperatorNotBetween
-				case "DISTINCT":
-					tok = TokenOperatorNotDistinct
-				default:
-					l.Backup()
-					tok = TokenOperatorNot
-				}
+				// Simplify: Always emit NOT token. Let parser handle "NOT LIKE" etc.
+				tok = TokenOperatorNot
+				lit = "NOT"
 			default:
+				// Check if it's a potential field name or other identifier
+				// Could add validation here if needed (e.g., check against known fields)
 				tok = TokenIdentifier
 			}
 		case scanner.Int:
 			tok = TokenInt
 		case scanner.Float:
 			tok = TokenFloat
-		case scanner.String: // double quotes string are not supported
+		case scanner.String: // Built-in scanner string (double quotes) - treat as illegal for this SQL-like syntax
 			tok = TokenIllegal
-		case '\'':
+			lit = l.s.TokenText() // Keep the literal for error context
+		case '\'': // Start of a single-quoted string literal
 			var sb strings.Builder
-			sb.WriteByte(byte(scanTok)) // Write the opening quote
-			var invalid bool
-			numQuotes := 1 // because we already have one
-
+			isValid := true
 			for {
-				char := l.s.Next()
+				char := l.s.Next() // Consume next character
 
 				if char == scanner.EOF {
-					break
-				} else if char == '\\' {
-					sb.WriteByte(byte(char)) // Write the escape character
-					char = l.s.Next()        // Consume the escaped character
-					sb.WriteByte(byte(char)) // Write the escaped character
-					char = l.s.Next()        // Consume the escaped character
+					// Reached EOF without closing quote
+					isValid = false
+					break // Exit loop
 				} else if char == '\'' {
-					if l.s.Peek() == ' ' || l.s.Peek() == ')' || l.s.Peek() == scanner.EOF {
-						sb.WriteByte(byte(char)) // Write the closing quote
-						numQuotes++
-						break
+					// Found a quote. Is it an escaped quote ('') or the end?
+					if l.s.Peek() == '\'' {
+						// It's an escaped quote ('') according to SQL standard
+						l.s.Next()         // Consume the second quote from the input stream
+						sb.WriteRune('\'') // Append a single literal quote to the value
+					} else {
+						// It's the closing quote
+						break // Exit the loop, string successfully parsed
 					}
+				} else {
+					// Regular character within the string
+					// Note: Standard Go escapes like \n are not handled here, only '' for quote escape.
+					sb.WriteRune(char)
 				}
-
-				sb.WriteRune(char)
 			}
 
-			if numQuotes%2 != 0 {
-				// Even number of quotes means the string is not closed
-				invalid = true
-			}
-
-			if invalid {
-				tok = TokenIllegal
-			} else {
+			if isValid {
 				tok = TokenString
+				// The literal value should include the surrounding quotes.
+				lit = "'" + sb.String() + "'"
+			} else {
+				tok = TokenIllegal
+				// For an unterminated string, the literal includes the opening quote and partial content.
+				// Let's just mark it illegal for now. The parser can provide better context.
+				lit = "'" + sb.String() // Show partial content for debugging
 			}
-
-			lit = sb.String()
 
 		case '(':
 			tok = TokenLPAREN
