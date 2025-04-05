@@ -1,199 +1,425 @@
 package qfv
 
-// // FilterParser parses the query parameter for filtering
-// type FilterParser struct {
-// 	allowedFields map[string]any // any because don't allocate memory for struct{}
-// }
+import (
+	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+	"text/scanner"
+)
 
-// // NewFilterParser creates a new parser with the allowed fields
-// func NewFilterParser(allowedFields []string) *FilterParser {
-// 	filterFields := make(map[string]any, len(allowedFields))
+// FilterParser parses the query parameter for filtering
+type FilterParser struct {
+	allowedFields map[string]any // any because don't allocate memory for struct{}
+	lexer         *Lexer
+	currentToken  Token
+	errors        []error
+}
 
-// 	for _, f := range allowedFields {
-// 		filterFields[f] = struct{}{}
-// 	}
+// NewFilterParser creates a new parser with the allowed fields
+func NewFilterParser(allowedFields []string) *FilterParser {
+	filterFields := make(map[string]any, len(allowedFields))
 
-// 	return &FilterParser{
-// 		allowedFields: filterFields,
-// 	}
-// }
+	for _, f := range allowedFields {
+		filterFields[f] = struct{}{}
+	}
 
-// // Parse parses the filter parameter
-// func (p *FilterParser) Parse(input string) (FilterNode, error) {
-// 	if input == "" {
-// 		return FilterNode{}, fmt.Errorf("empty filter expression")
-// 	}
+	return &FilterParser{
+		allowedFields: filterFields,
+	}
+}
 
-// 	lexer := newLexer(input)
-// 	tokens, err := lexer.tokenize()
-// 	if err != nil {
-// 		return FilterNode{}, err
-// 	}
+// Parse parses the filter query and returns the AST
+func (p *FilterParser) Parse(input string) (Node, error) {
+	p.lexer = NewLexer(input)
+	p.lexer.Parse()
+	p.errors = nil
+	p.nextToken()
 
-// 	parser := newFilterParser(tokens, p.allowedFields)
-// 	expr, err := parser.parse()
-// 	if err != nil {
-// 		return FilterNode{}, err
-// 	}
+	if p.currentToken.Type == TokenEOF {
+		return nil, fmt.Errorf("empty filter expression")
+	}
 
-// 	return FilterNode{Expression: expr}, nil
-// }
+	node := p.parseExpression()
 
-// func (p *FilterParser) Validate(input string) (FilterNode, error) {
-// 	if input == "" {
-// 		return FilterNode{}, nil
-// 	}
+	if len(p.errors) > 0 {
+		return nil, fmt.Errorf("parse errors: %v", p.errors)
+	}
 
-// 	node, err := p.Parse(input)
-// 	if err != nil {
-// 		return FilterNode{}, err
-// 	}
+	return node, nil
+}
 
-// 	return node, nil
-// }
+// nextToken advances to the next token
+func (p *FilterParser) nextToken() {
+	p.currentToken = p.lexer.Next()
+}
 
-// // filterParser is a parser for filter expressions
-// type filterParser struct {
-// 	tokens        []Token
-// 	lenTokens     int
-// 	pos           int
-// 	allowedFields map[string]any
-// }
+// peekToken returns the next token without consuming it
+func (p *FilterParser) peekToken() Token {
+	return p.lexer.Peek()
+}
 
-// // newFilterParser creates a new filter parser
-// func newFilterParser(tokens []Token, allowedFields map[string]any) *filterParser {
-// 	return &filterParser{
-// 		tokens:        tokens,
-// 		lenTokens:     len(tokens),
-// 		pos:           0,
-// 		allowedFields: allowedFields,
-// 	}
-// }
+// expect checks if the current token is of the expected type
+func (p *FilterParser) expect(tokenType TokenType) bool {
+	if p.currentToken.Type == tokenType {
+		p.nextToken()
+		return true
+	}
+	p.addError(fmt.Errorf("expected %s, got %s", tokenType, p.currentToken.Type))
+	return false
+}
 
-// // parse parses the filter expression
-// func (p *filterParser) parse() (FilterNode, error) {
-// 	return p.parseExpression()
-// }
+// addError adds an error to the error list
+func (p *FilterParser) addError(err error) {
+	p.errors = append(p.errors, err)
+}
 
-// // parseExpression parses a logical expression
-// func (p *filterParser) parseExpression() (FilterNode, error) {
-// 	left, err := p.parseComparison()
-// 	if err != nil {
-// 		return FilterNode{}, err
-// 	}
+// parseExpression parses an expression
+func (p *FilterParser) parseExpression() Node {
+	return p.parseLogicalOr()
+}
 
-// 	for p.pos < p.lenTokens && p.tokens[p.pos].Type == TokenLogicalOperation {
-// 		op := p.tokens[p.pos].Value
-// 		p.pos++
+// parseLogicalOr parses OR expressions
+func (p *FilterParser) parseLogicalOr() Node {
+	left := p.parseLogicalAnd()
 
-// 		if op == OperatorNot.String() {
-// 			right, err := p.parseComparison()
-// 			if err != nil {
-// 				return FilterNode{}, err
-// 			}
+	for p.currentToken.Type == TokenOperatorOr {
+		pos := p.currentToken.Pos
+		operator := p.currentToken.Type
+		p.nextToken()
+		right := p.parseLogicalAnd()
+		left = &BinaryOperatorNode{
+			baseNode: baseNode{pos: pos},
+			Left:     left,
+			Right:    right,
+			Operator: operator,
+		}
+	}
 
-// 			left = BinaryOperatorNode{
-// 				Operator: OperatorNot,
-// 				Left:     right,
-// 				Right:    nil,
-// 			}
-// 		} else {
-// 			right, err := p.parseComparison()
-// 			if err != nil {
-// 				return FilterNode{}, err
-// 			}
+	return left
+}
 
-// 			left = BinaryOperatorNode{
-// 				Operator: Operator(op),
-// 				Left:     left,
-// 				Right:    right,
-// 			}
-// 		}
-// 	}
+// parseLogicalAnd parses AND expressions
+func (p *FilterParser) parseLogicalAnd() Node {
+	left := p.parseComparison()
 
-// 	return left, nil
-// }
+	for p.currentToken.Type == TokenOperatorAnd {
+		pos := p.currentToken.Pos
+		operator := p.currentToken.Type
+		p.nextToken()
+		right := p.parseComparison()
+		left = &BinaryOperatorNode{
+			baseNode: baseNode{pos: pos},
+			Left:     left,
+			Right:    right,
+			Operator: operator,
+		}
+	}
 
-// // parseComparison parses a comparison expression
-// func (p *filterParser) parseComparison() (FilterNode, error) {
-// 	if p.pos >= p.lenTokens {
-// 		return nil, errors.New("unexpected end of input")
-// 	}
+	return left
+}
 
-// 	if p.tokens[p.pos].Type == TokenLPAREN {
-// 		p.pos++ // Skip '('
-// 		expr, err := p.parseExpression()
-// 		if err != nil {
-// 			return nil, err
-// 		}
+// parseComparison parses comparison expressions
+func (p *FilterParser) parseComparison() Node {
+	// Check for NOT operator
+	if p.currentToken.Type == TokenOperatorNot {
+		pos := p.currentToken.Pos
+		p.nextToken()
+		expr := p.parseComparison()
+		return &UnaryOperatorNode{
+			baseNode: baseNode{pos: pos},
+			Operator: TokenOperatorNot,
+			X:        expr,
+		}
+	}
 
-// 		if p.pos >= p.lenTokens || p.tokens[p.pos].Type != TokenRPAREN {
-// 			return nil, errors.New("missing closing parenthesis")
-// 		}
+	// Check for parenthesized expressions
+	if p.currentToken.Type == TokenLPAREN {
+		pos := p.currentToken.Pos
+		p.nextToken()
+		expr := p.parseExpression()
+		if !p.expect(TokenRPAREN) {
+			p.addError(fmt.Errorf("expected closing parenthesis"))
+		}
+		return &GroupNode{
+			baseNode:   baseNode{pos: pos},
+			Expression: expr,
+		}
+	}
 
-// 		p.pos++ // Skip ')'
-// 		return expr, nil
-// 	}
+	// Parse field comparison
+	if p.currentToken.Type == TokenIdentifier {
+		field := &IdentifierNode{
+			baseNode: baseNode{pos: p.currentToken.Pos},
+			Name:     p.currentToken.Value,
+		}
+		p.nextToken()
 
-// 	if p.tokens[p.pos].Type == TokenLogicalOperation && p.tokens[p.pos].Value == OperatorNot.String() {
-// 		p.pos++ // Skip NOT
-// 		expr, err := p.parseComparison()
-// 		if err != nil {
-// 			return nil, err
-// 		}
+		// Check if field is allowed
+		if _, ok := p.allowedFields[field.Name]; !ok {
+			p.addError(fmt.Errorf("field %s is not allowed", field.Name))
+		}
 
-// 		return LogicalOperationNode{
-// 			Operator: OperatorNot,
-// 			Left:     expr,
-// 			Right:    nil,
-// 		}, nil
-// 	}
+		// Handle different operators
+		switch p.currentToken.Type {
+		case TokenOperatorEqual, TokenOperatorNotEqual, TokenOperatorNotEqualAlias,
+			TokenOperatorLessThan, TokenOperatorLessThanOrEqualTo,
+			TokenOperatorGreaterThan, TokenOperatorGreaterThanOrEqualTo:
+			return p.parseComparisonOperator(field)
+		case TokenOperatorLike:
+			return p.parseLikeOperator(field, false)
+		case TokenOperatorIn:
+			return p.parseInOperator(field, false)
+		case TokenOperatorBetween:
+			return p.parseBetweenOperator(field, false)
+		case TokenOperatorIsNull:
+			return p.parseIsNullOperator(field)
+		case TokenOperatorDistinct:
+			return p.parseDistinctOperator(field, false)
+		case TokenOperatorNot:
+			// Handle NOT operators (NOT IN, NOT BETWEEN, NOT LIKE)
+			pos := p.currentToken.Pos
+			p.nextToken() // Consume NOT
 
-// 	if p.tokens[p.pos].Type != TokenIdentifier {
-// 		return nil, fmt.Errorf("expected field name, got %s", p.tokens[p.pos].Value)
-// 	}
+			switch p.currentToken.Type {
+			case TokenOperatorIn:
+				return p.parseInOperator(field, true)
+			case TokenOperatorBetween:
+				return p.parseBetweenOperator(field, true)
+			case TokenOperatorLike:
+				return p.parseLikeOperator(field, true)
+			default:
+				p.addError(fmt.Errorf("unexpected token after NOT: %s", p.currentToken.Type))
+				return &UnaryOperatorNode{
+					baseNode: baseNode{pos: pos},
+					Operator: TokenOperatorNot,
+					X:        field,
+				}
+			}
+		default:
+			p.addError(fmt.Errorf("unexpected token after field: %s", p.currentToken.Type))
+			return field
+		}
+	}
 
-// 	field := p.tokens[p.pos].Value
-// 	if _, exists := p.allowedFields[field]; !exists {
-// 		return nil, fmt.Errorf("unknown field: %s", field)
-// 	}
-// 	p.pos++
+	// Parse literal
+	return p.parsePrimary()
+}
 
-// 	if p.pos >= p.lenTokens || p.tokens[p.pos].Type != TokenOperator {
-// 		return nil, errors.New("expected comparison operator")
-// 	}
+// parseComparisonOperator parses comparison operators (=, <>, !=, <, <=, >, >=)
+func (p *FilterParser) parseComparisonOperator(field Node) Node {
+	pos := p.currentToken.Pos
+	operator := p.currentToken.Type
+	p.nextToken()
+	right := p.parsePrimary()
+	return &BinaryOperatorNode{
+		baseNode: baseNode{pos: pos},
+		Left:     field,
+		Right:    right,
+		Operator: operator,
+	}
+}
 
-// 	operator := Operator(p.tokens[p.pos].Value)
-// 	p.pos++
+// parseLikeOperator parses LIKE operator
+func (p *FilterParser) parseLikeOperator(field Node, isNot bool) Node {
+	pos := p.currentToken.Pos
+	p.nextToken()
+	pattern := p.parsePrimary()
+	operator := TokenOperatorLike
+	if isNot {
+		return &UnaryOperatorNode{
+			baseNode: baseNode{pos: pos},
+			Operator: TokenOperatorNot,
+			X: &BinaryOperatorNode{
+				baseNode: baseNode{pos: pos},
+				Left:     field,
+				Right:    pattern,
+				Operator: operator,
+			},
+		}
+	}
+	return &BinaryOperatorNode{
+		baseNode: baseNode{pos: pos},
+		Left:     field,
+		Right:    pattern,
+		Operator: operator,
+	}
+}
 
-// 	if p.pos >= p.lenTokens {
-// 		return nil, errors.New("expected value after operator")
-// 	}
+// parseInOperator parses IN operator
+func (p *FilterParser) parseInOperator(field Node, isNot bool) Node {
+	pos := p.currentToken.Pos
+	p.nextToken()
 
-// 	var value Node
-// 	switch p.tokens[p.pos].Type {
-// 	case TokenString:
-// 		value = StringNode{Value: p.tokens[p.pos].Value}
-// 	case TokenIdentifier:
-// 		value = IdentifierNode{Value: p.tokens[p.pos].Value}
-// 	case TokenBoolean:
-// 		value = BooleanNode{Value: p.tokens[p.pos].Value == "true"}
-// 	case TokenNumber:
-// 		v, err := strconv.ParseFloat(p.tokens[p.pos].Value, 64)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("invalid number: %s", p.tokens[p.pos].Value)
-// 		}
-// 		value = NumberNode{Value: v}
+	if !p.expect(TokenLPAREN) {
+		p.addError(fmt.Errorf("expected opening parenthesis after IN"))
+		return field
+	}
 
-// 	default:
-// 		return nil, fmt.Errorf("expected string or identifier, got %s", p.tokens[p.pos].Type)
-// 	}
+	var values []Node
 
-// 	p.pos++
+	// Parse the first value
+	values = append(values, p.parsePrimary())
 
-// 	return ComparisonNode{
-// 		Field:    field,
-// 		Operator: operator,
-// 		Value:    value,
-// 	}, nil
-// }
+	// Parse additional values
+	for p.currentToken.Type == TokenComma {
+		p.nextToken()
+		values = append(values, p.parsePrimary())
+	}
+
+	if !p.expect(TokenRPAREN) {
+		p.addError(fmt.Errorf("expected closing parenthesis after IN values"))
+	}
+
+	inNode := &InNode{
+		baseNode: baseNode{pos: pos},
+		Field:    field,
+		IsNot:    false, // Always false, we'll wrap it in a UnaryOperatorNode if isNot is true
+		Values:   values,
+	}
+
+	if isNot {
+		return &UnaryOperatorNode{
+			baseNode: baseNode{pos: pos},
+			Operator: TokenOperatorNot,
+			X:        inNode,
+		}
+	}
+
+	return inNode
+}
+
+// parseBetweenOperator parses BETWEEN operator
+func (p *FilterParser) parseBetweenOperator(field Node, isNot bool) Node {
+	pos := p.currentToken.Pos
+	p.nextToken()
+
+	lower := p.parsePrimary()
+
+	if !p.expect(TokenOperatorAnd) {
+		p.addError(fmt.Errorf("expected AND in BETWEEN expression"))
+		return field
+	}
+
+	upper := p.parsePrimary()
+
+	betweenNode := &BetweenNode{
+		baseNode: baseNode{pos: pos},
+		Field:    field,
+		Lower:    lower,
+		Upper:    upper,
+		IsNot:    false, // Always false, we'll wrap it in a UnaryOperatorNode if isNot is true
+	}
+
+	if isNot {
+		return &UnaryOperatorNode{
+			baseNode: baseNode{pos: pos},
+			Operator: TokenOperatorNot,
+			X:        betweenNode,
+		}
+	}
+
+	return betweenNode
+}
+
+// parseIsNullOperator parses IS NULL operator
+func (p *FilterParser) parseIsNullOperator(field Node) Node {
+	pos := p.currentToken.Pos
+	p.nextToken()
+
+	isNot := false
+	if p.currentToken.Type == TokenOperatorNot {
+		isNot = true
+		p.nextToken()
+	}
+
+	// Check for NULL
+	if p.currentToken.Type == TokenIdentifier && strings.ToUpper(p.currentToken.Value) == "NULL" {
+		p.nextToken()
+		return &IsNullNode{
+			baseNode: baseNode{pos: pos},
+			Field:    field,
+			IsNot:    isNot,
+		}
+	}
+
+	p.addError(fmt.Errorf("expected NULL after IS"))
+	return field
+}
+
+// parseDistinctOperator parses DISTINCT operator
+func (p *FilterParser) parseDistinctOperator(field Node, isNot bool) Node {
+	pos := p.currentToken.Pos
+	p.nextToken()
+
+	return &DistinctNode{
+		baseNode: baseNode{pos: pos},
+		Field:    field,
+		IsNot:    isNot,
+	}
+}
+
+// parsePrimary parses primary expressions (literals)
+func (p *FilterParser) parsePrimary() Node {
+	switch p.currentToken.Type {
+	case TokenString:
+		node := &LiteralNode{
+			baseNode: baseNode{pos: p.currentToken.Pos},
+			Value:    strings.Trim(p.currentToken.Value, "'"),
+			Kind:     reflect.String,
+			Text:     p.currentToken.Value,
+		}
+		p.nextToken()
+		return node
+
+	case TokenInt:
+		val, err := strconv.ParseInt(p.currentToken.Value, 10, 64)
+		if err != nil {
+			p.addError(fmt.Errorf("invalid integer: %s", p.currentToken.Value))
+		}
+		node := &LiteralNode{
+			baseNode: baseNode{pos: p.currentToken.Pos},
+			Value:    val,
+			Kind:     reflect.Int64,
+			Text:     p.currentToken.Value,
+		}
+		p.nextToken()
+		return node
+
+	case TokenFloat:
+		val, err := strconv.ParseFloat(p.currentToken.Value, 64)
+		if err != nil {
+			p.addError(fmt.Errorf("invalid float: %s", p.currentToken.Value))
+		}
+		node := &LiteralNode{
+			baseNode: baseNode{pos: p.currentToken.Pos},
+			Value:    val,
+			Kind:     reflect.Float64,
+			Text:     p.currentToken.Value,
+		}
+		p.nextToken()
+		return node
+
+	case TokenBoolean:
+		val := strings.ToUpper(p.currentToken.Value) == "TRUE" || strings.ToUpper(p.currentToken.Value) == "YES"
+		node := &LiteralNode{
+			baseNode: baseNode{pos: p.currentToken.Pos},
+			Value:    val,
+			Kind:     reflect.Bool,
+			Text:     p.currentToken.Value,
+		}
+		p.nextToken()
+		return node
+
+	default:
+		p.addError(fmt.Errorf("unexpected token: %s", p.currentToken.Type))
+		// Skip the token to avoid infinite loops
+		p.nextToken()
+		return &LiteralNode{
+			baseNode: baseNode{pos: scanner.Position{}},
+			Value:    nil,
+			Kind:     0,
+			Text:     "",
+		}
+	}
+}
