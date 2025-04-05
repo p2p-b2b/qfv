@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	qfv "github.com/p2p-b2b/query-ast-validator"
+	qfv "github.com/p2p-b2b/qfv"
 )
 
 func main() {

@@ -1,3 +1,3 @@
-module github.com/p2p-b2b/query-ast-validator
+module github.com/p2p-b2b/qfv
 
-go 1.24.1
+go 1.24.2
