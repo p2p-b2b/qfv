@@ -6,6 +6,14 @@ import (
 	"testing"
 )
 
+func ErrUnknownField(field string) error {
+	return fmt.Errorf("unknown field: %s", field)
+}
+
+func ErrEmptyInputExpression() error {
+	return fmt.Errorf("empty input expression")
+}
+
 func ErrEmptyFieldExpression(input string) error {
 	return fmt.Errorf("empty field expression: %s", input)
 }

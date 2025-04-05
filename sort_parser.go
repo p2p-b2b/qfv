@@ -5,6 +5,19 @@ import (
 	"strings"
 )
 
+type QFVSortError struct {
+	Field   string
+	Message string
+}
+
+func (e *QFVSortError) Error() string {
+	if e.Field != "" {
+		return fmt.Sprintf("sort error on field '%s': %s", e.Field, e.Message)
+	}
+
+	return fmt.Sprintf("sort error: %s", e.Message)
+}
+
 // SortDirection represents the sorting direction in sort expressions
 type SortDirection string
 
@@ -57,7 +70,7 @@ func NewSortParser(allowedFields []string) *SortParser {
 // Parse parses the sort parameter
 func (p *SortParser) Parse(input string) (SortNode, error) {
 	if input == "" {
-		return SortNode{}, fmt.Errorf("empty input expression")
+		return SortNode{}, &QFVSortError{Message: "empty input expression"}
 	}
 
 	parts := strings.Split(input, ",")
@@ -66,26 +79,26 @@ func (p *SortParser) Parse(input string) (SortNode, error) {
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
-			return SortNode{}, fmt.Errorf("empty sort expression: %s", input)
+			return SortNode{}, &QFVSortError{Field: part, Message: "empty sort expression"}
 		}
 
 		sortParts := strings.Fields(part)
 		if len(sortParts) == 0 {
-			return SortNode{}, fmt.Errorf("invalid sort expression: %s", part)
+			return SortNode{}, &QFVSortError{Field: part, Message: "invalid sort expression"}
 		}
 
 		if len(sortParts) > 2 {
-			return SortNode{}, fmt.Errorf("invalid sort expression: %s", part)
+			return SortNode{}, &QFVSortError{Field: part, Message: "too many sort expressions"}
 		}
 
 		fieldName := sortParts[0]
 		if _, exists := p.allowedFields[fieldName]; !exists {
-			return SortNode{}, fmt.Errorf("unknown field: %s", fieldName)
+			return SortNode{}, &QFVSortError{Field: fieldName, Message: "field not allowed for sorting"}
 		}
 
 		direction := SortAsc
 		if len(sortParts) == 1 {
-			return SortNode{}, fmt.Errorf("missing sort direction for field: %s", fieldName)
+			return SortNode{}, &QFVSortError{Field: fieldName, Message: "missing sort direction after field"}
 		}
 
 		if len(sortParts) > 1 {
@@ -97,7 +110,7 @@ func (p *SortParser) Parse(input string) (SortNode, error) {
 			case SortAsc.String():
 				direction = SortAsc
 			default:
-				return SortNode{}, fmt.Errorf("invalid sort direction: %s", dirStr)
+				return SortNode{}, &QFVSortError{Field: fieldName, Message: "invalid sort direction"}
 			}
 		}
 
