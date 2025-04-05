@@ -30,7 +30,6 @@ jobs:
         run: |
           echo "# Build Summary" > $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Release Version:** ${{ env.RELEASE_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "**Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
           echo "**Who merge:** ${{ github.triggering_actor }}" >> $GITHUB_STEP_SUMMARY
           echo "**Commit ID:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
