@@ -1,14 +1,9 @@
 package qfv
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 )
-
-func ErrEmptyFieldExpression(input string) error {
-	return fmt.Errorf("empty field expression: %s", input)
-}
 
 func TestFieldsParser_Parse(t *testing.T) {
 	allowedFields := []string{"name", "age", "city"}
@@ -24,7 +19,7 @@ func TestFieldsParser_Parse(t *testing.T) {
 			name:        "empty input",
 			input:       "",
 			expected:    FieldsNode{},
-			expectedErr: ErrEmptyInputExpression(),
+			expectedErr: &QFVFieldsError{Message: "empty input expression"},
 		},
 		{
 			name:  "single field",
@@ -38,7 +33,7 @@ func TestFieldsParser_Parse(t *testing.T) {
 			name:        "single field, extra comma",
 			input:       "name,",
 			expected:    FieldsNode{},
-			expectedErr: ErrEmptyFieldExpression("name,"),
+			expectedErr: &QFVFieldsError{Field: "", Message: "empty field expression"},
 		},
 		{
 			name:  "multiple fields",
@@ -60,25 +55,25 @@ func TestFieldsParser_Parse(t *testing.T) {
 			name:        "invalid field",
 			input:       "unknown",
 			expected:    FieldsNode{},
-			expectedErr: ErrUnknownField("unknown"),
+			expectedErr: &QFVFieldsError{Field: "unknown", Message: "unknown field"},
 		},
 		{
 			name:        "invalid field uppercase",
 			input:       "NAME",
 			expected:    FieldsNode{},
-			expectedErr: ErrUnknownField("NAME"),
+			expectedErr: &QFVFieldsError{Field: "NAME", Message: "unknown field"},
 		},
 		{
 			name:        "empty part",
 			input:       "name, ,age",
 			expected:    FieldsNode{},
-			expectedErr: ErrEmptyFieldExpression("name, ,age"),
+			expectedErr: &QFVFieldsError{Field: "", Message: "empty field expression"},
 		},
 		{
 			name:        "single comma",
 			input:       ",",
 			expected:    FieldsNode{},
-			expectedErr: ErrEmptyFieldExpression(","),
+			expectedErr: &QFVFieldsError{Field: "", Message: "empty field expression"},
 		},
 	}
 

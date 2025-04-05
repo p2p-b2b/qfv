@@ -1,34 +1,9 @@
 package qfv
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 )
-
-func ErrUnknownField(field string) error {
-	return fmt.Errorf("unknown field: %s", field)
-}
-
-func ErrInvalidSortDirection(direction string) error {
-	return fmt.Errorf("invalid sort direction: %s", direction)
-}
-
-func ErrMissingSortDirection(field string) error {
-	return fmt.Errorf("missing sort direction for field: %s", field)
-}
-
-func ErrInvalidSortExpression(expression string) error {
-	return fmt.Errorf("invalid sort expression: %s", expression)
-}
-
-func ErrEmptySortExpression(expression string) error {
-	return fmt.Errorf("empty sort expression: %s", expression)
-}
-
-func ErrEmptyInputExpression() error {
-	return fmt.Errorf("empty input expression")
-}
 
 func TestSortParser_Parse(t *testing.T) {
 	allowedFields := []string{"name", "age", "city"}
@@ -44,7 +19,7 @@ func TestSortParser_Parse(t *testing.T) {
 			name:        "empty input",
 			input:       "",
 			expected:    SortNode{},
-			expectedErr: ErrEmptyInputExpression(),
+			expectedErr: &QFVSortError{Message: "empty input expression"},
 		},
 		{
 			name:  "single field ascending lowercase",
@@ -70,7 +45,7 @@ func TestSortParser_Parse(t *testing.T) {
 			name:        "single field missing direction",
 			input:       "name",
 			expected:    SortNode{},
-			expectedErr: ErrMissingSortDirection("name"),
+			expectedErr: &QFVSortError{Field: "name", Message: "missing sort direction after field"},
 		},
 		{
 			name:  "single field descending uppercase",
@@ -96,19 +71,19 @@ func TestSortParser_Parse(t *testing.T) {
 			name:        "single field, wrong direction",
 			input:       "name invalid",
 			expected:    SortNode{},
-			expectedErr: ErrInvalidSortDirection("INVALID"),
+			expectedErr: &QFVSortError{Field: "name", Message: "invalid sort direction"},
 		},
 		{
 			name:        "single field multiple direction",
 			input:       "name asc DESC",
 			expected:    SortNode{},
-			expectedErr: ErrInvalidSortExpression("name asc DESC"),
+			expectedErr: &QFVSortError{Field: "name asc DESC", Message: "too many sort expressions"},
 		},
 		{
 			name:        "single field descending with extra comma",
 			input:       "name DESC,",
 			expected:    SortNode{},
-			expectedErr: ErrEmptySortExpression("name DESC,"),
+			expectedErr: &QFVSortError{Message: "empty sort expression"},
 		},
 		{
 			name:  "multiple fields, lowercase and uppercase",
@@ -126,31 +101,31 @@ func TestSortParser_Parse(t *testing.T) {
 			name:        "invalid field",
 			input:       "unknown",
 			expected:    SortNode{},
-			expectedErr: ErrUnknownField("unknown"),
+			expectedErr: &QFVSortError{Field: "unknown", Message: "field not allowed for sorting"},
 		},
 		{
 			name:        "invalid direction",
 			input:       "name invalid",
 			expected:    SortNode{},
-			expectedErr: ErrInvalidSortDirection("INVALID"),
+			expectedErr: &QFVSortError{Field: "name", Message: "invalid sort direction"},
 		},
 		{
 			name:        "empty part",
 			input:       "name, ,age",
 			expected:    SortNode{},
-			expectedErr: ErrMissingSortDirection("name"),
+			expectedErr: &QFVSortError{Field: "name", Message: "missing sort direction after field"},
 		},
 		{
 			name:        "invalid sort expression",
 			input:       " ",
 			expected:    SortNode{},
-			expectedErr: ErrEmptySortExpression(" "),
+			expectedErr: &QFVSortError{Message: "empty sort expression"},
 		},
 		{
 			name:        "single comma",
 			input:       ",",
 			expected:    SortNode{},
-			expectedErr: ErrEmptySortExpression(","),
+			expectedErr: &QFVSortError{Message: "empty sort expression"},
 		},
 	}
 

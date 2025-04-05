@@ -8,6 +8,19 @@ import (
 	"text/scanner"
 )
 
+type QFVFilterError struct {
+	Field   string
+	Message string
+}
+
+func (e *QFVFilterError) Error() string {
+	if e.Field != "" {
+		return fmt.Sprintf("error on field '%s': %s", e.Field, e.Message)
+	}
+
+	return fmt.Sprintf("error: %s", e.Message)
+}
+
 // FilterParser parses the query parameter for filtering
 type FilterParser struct {
 	allowedFields map[string]any // any because don't allocate memory for struct{}
@@ -38,20 +51,20 @@ func (p *FilterParser) Parse(input string) (Node, error) {
 	// Check for illegal tokens in the input
 	for _, token := range p.lexer.tokens {
 		if token.Type == TokenIllegal {
-			p.addError(fmt.Errorf("illegal token: %s", token.Value))
+			p.addError(&QFVFilterError{Field: token.Value, Message: "illegal token"})
 		}
 	}
 
 	p.nextToken()
 
 	if p.currentToken.Type == TokenEOF {
-		return nil, fmt.Errorf("empty filter expression")
+		return nil, &QFVFilterError{Message: "empty filter expression"}
 	}
 
 	node := p.parseExpression()
 
 	if len(p.errors) > 0 {
-		return nil, fmt.Errorf("parse errors: %v", p.errors)
+		return nil, &QFVFilterError{Message: fmt.Sprintf("parsing errors: %v", p.errors)}
 	}
 
 	return node, nil
@@ -62,18 +75,14 @@ func (p *FilterParser) nextToken() {
 	p.currentToken = p.lexer.Next()
 }
 
-// peekToken returns the next token without consuming it
-func (p *FilterParser) peekToken() Token {
-	return p.lexer.Peek()
-}
-
 // expect checks if the current token is of the expected type
 func (p *FilterParser) expect(tokenType TokenType) bool {
 	if p.currentToken.Type == tokenType {
 		p.nextToken()
 		return true
 	}
-	p.addError(fmt.Errorf("expected %s, got %s", tokenType, p.currentToken.Type))
+
+	p.addError(&QFVFilterError{Message: fmt.Sprintf("expected %s, got %s", tokenType, p.currentToken.Type)})
 	return false
 }
 
@@ -147,7 +156,7 @@ func (p *FilterParser) parseComparison() Node {
 		p.nextToken()
 		expr := p.parseExpression()
 		if !p.expect(TokenRPAREN) {
-			p.addError(fmt.Errorf("expected closing parenthesis"))
+			p.addError(&QFVFilterError{Message: "expected closing parenthesis"})
 		}
 		return &GroupNode{
 			baseNode:   baseNode{pos: pos},
@@ -165,7 +174,7 @@ func (p *FilterParser) parseComparison() Node {
 
 		// Check if field is allowed
 		if _, ok := p.allowedFields[field.Name]; !ok {
-			p.addError(fmt.Errorf("field %s is not allowed", field.Name))
+			p.addError(&QFVFilterError{Field: field.Name, Message: "field not allowed"})
 		}
 
 		// Handle different operators
@@ -197,7 +206,7 @@ func (p *FilterParser) parseComparison() Node {
 			case TokenOperatorLike:
 				return p.parseLikeOperator(field, true)
 			default:
-				p.addError(fmt.Errorf("unexpected token after NOT: %s", p.currentToken.Type))
+				p.addError(&QFVFilterError{Message: fmt.Sprintf("unexpected token after NOT: %s", p.currentToken.Type)})
 				return &UnaryOperatorNode{
 					baseNode: baseNode{pos: pos},
 					Operator: TokenOperatorNot,
@@ -205,7 +214,7 @@ func (p *FilterParser) parseComparison() Node {
 				}
 			}
 		default:
-			p.addError(fmt.Errorf("unexpected token after field: %s", p.currentToken.Type))
+			p.addError(&QFVFilterError{Field: field.Name, Message: "unexpected token after field"})
 			return field
 		}
 	}
@@ -260,7 +269,7 @@ func (p *FilterParser) parseInOperator(field Node, isNot bool) Node {
 	p.nextToken()
 
 	if !p.expect(TokenLPAREN) {
-		p.addError(fmt.Errorf("expected opening parenthesis after IN"))
+		p.addError(&QFVFilterError{Message: "expected opening parenthesis after IN"})
 		return field
 	}
 
@@ -276,7 +285,7 @@ func (p *FilterParser) parseInOperator(field Node, isNot bool) Node {
 	}
 
 	if !p.expect(TokenRPAREN) {
-		p.addError(fmt.Errorf("expected closing parenthesis after IN values"))
+		p.addError(&QFVFilterError{Message: "expected closing parenthesis after IN values"})
 	}
 
 	inNode := &InNode{
@@ -305,7 +314,7 @@ func (p *FilterParser) parseBetweenOperator(field Node, isNot bool) Node {
 	lower := p.parsePrimary()
 
 	if !p.expect(TokenOperatorAnd) {
-		p.addError(fmt.Errorf("expected AND in BETWEEN expression"))
+		p.addError(&QFVFilterError{Message: "expected AND in BETWEEN expression"})
 		return field
 	}
 
@@ -351,7 +360,7 @@ func (p *FilterParser) parseIsNullOperator(field Node) Node {
 		}
 	}
 
-	p.addError(fmt.Errorf("expected NULL after IS"))
+	p.addError(&QFVFilterError{Message: "expected NULL after IS"})
 	return field
 }
 
@@ -383,7 +392,7 @@ func (p *FilterParser) parsePrimary() Node {
 	case TokenInt:
 		val, err := strconv.ParseInt(p.currentToken.Value, 10, 64)
 		if err != nil {
-			p.addError(fmt.Errorf("invalid integer: %s", p.currentToken.Value))
+			p.addError(&QFVFilterError{Message: fmt.Sprintf("invalid integer: %s", p.currentToken.Value)})
 		}
 		node := &LiteralNode{
 			baseNode: baseNode{pos: p.currentToken.Pos},
@@ -397,7 +406,7 @@ func (p *FilterParser) parsePrimary() Node {
 	case TokenFloat:
 		val, err := strconv.ParseFloat(p.currentToken.Value, 64)
 		if err != nil {
-			p.addError(fmt.Errorf("invalid float: %s", p.currentToken.Value))
+			p.addError(&QFVFilterError{Message: fmt.Sprintf("invalid float: %s", p.currentToken.Value)})
 		}
 		node := &LiteralNode{
 			baseNode: baseNode{pos: p.currentToken.Pos},
@@ -420,7 +429,7 @@ func (p *FilterParser) parsePrimary() Node {
 		return node
 
 	default:
-		p.addError(fmt.Errorf("unexpected token: %s", p.currentToken.Type))
+		p.addError(&QFVFilterError{Message: fmt.Sprintf("unexpected token: %s", p.currentToken.Type)})
 		// Skip the token to avoid infinite loops
 		p.nextToken()
 		return &LiteralNode{
