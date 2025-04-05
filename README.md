@@ -1,10 +1,10 @@
-# Query AST Validator (QFV)
+# Query Filters Validator (QFV)
 
 A Go library for parsing and validating query expressions commonly used in REST APIs and database queries. This library provides robust parsing and validation for fields selection, filtering, and sorting operations.
 
 ## Overview
 
-QFV (Query Fields Validator) is an Abstract Syntax Tree (AST) parser designed to validate and parse three common types of query expressions:
+QFV (Query Filters Validator) is an Abstract Syntax Tree (AST) parser designed to validate and parse three common types of query expressions:
 
 1. **Fields Selection**: Specify which fields to include in the response
 2. **Filtering**: Apply conditions to filter results
@@ -15,7 +15,7 @@ The library ensures that only allowed fields are used in these expressions, help
 ## Installation
 
 ```bash
-go get github.com/p2p-b2b/qfv
+go get github.com/p2p-b2b/qfv@latest
 ```
 
 ## Usage
@@ -26,52 +26,52 @@ go get github.com/p2p-b2b/qfv
 package main
 
 import (
-	"fmt"
-	"log"
+  "fmt"
+  "log"
 
-	qfv "github.com/p2p-b2b/qfv"
+  qfv "github.com/p2p-b2b/qfv"
 )
 
 func main() {
-	// Define the allowed fields for your API
-	allowedFields := []string{"first_name", "last_name", "email", "created_at", "updated_at"}
+  // Define the allowed fields for your API
+  allowedFields := []string{"first_name", "last_name", "email", "created_at", "updated_at"}
 
-	// Create parsers with the allowed fields
-	sortParser := qfv.NewSortParser(allowedFields)
-	fieldsParser := qfv.NewFieldsParser(allowedFields)
-	filterParser := qfv.NewFilterParser(allowedFields)
+  // Create parsers with the allowed fields
+  sortParser := qfv.NewSortParser(allowedFields)
+  fieldsParser := qfv.NewFieldsParser(allowedFields)
+  filterParser := qfv.NewFilterParser(allowedFields)
 
-	// Example inputs from your API
-	sortInput := "first_name ASC,created_at DESC"
-	fieldsInput := "first_name, last_name, email"
-	filterInput := "first_name = 'John' AND last_name = 'Doe'"
+  // Example inputs from your API
+  sortInput := "first_name ASC,created_at DESC"
+  fieldsInput := "first_name, last_name, email"
+  filterInput := "first_name = 'John' AND last_name = 'Doe'"
 
-	// Parse and validate the inputs
-	sortNode, err := sortParser.Parse(sortInput)
-	if err != nil {
-		log.Fatalf("Sort validation error: %v", err)
-	}
+  // Parse and validate the inputs
+  sortNode, err := sortParser.Parse(sortInput)
+  if err != nil {
+    log.Fatalf("Sort validation error: %v", err)
+  }
 
-	fieldsNode, err := fieldsParser.Parse(fieldsInput)
-	if err != nil {
-		log.Fatalf("Fields validation error: %v", err)
-	}
+  fieldsNode, err := fieldsParser.Parse(fieldsInput)
+  if err != nil {
+    log.Fatalf("Fields validation error: %v", err)
+  }
 
-	_, err = filterParser.Parse(filterInput)
-	if err != nil {
-		log.Fatalf("Filter validation error: %v", err)
-	}
+  _, err = filterParser.Parse(filterInput)
+  if err != nil {
+    log.Fatalf("Filter validation error: %v", err)
+  }
 
-	// Use the parsed nodes in your application
-	fmt.Println("Sort fields:")
-	for _, field := range sortNode.Fields {
-		fmt.Printf("  %s %s\n", field.Field, field.Direction)
-	}
+  // Use the parsed nodes in your application
+  fmt.Println("Sort fields:")
+  for _, field := range sortNode.Fields {
+    fmt.Printf("  %s %s\n", field.Field, field.Direction)
+  }
 
-	fmt.Println("\nRequested fields:")
-	for _, field := range fieldsNode.Fields {
-		fmt.Printf("  %s\n", field)
-	}
+  fmt.Println("\nRequested fields:")
+  for _, field := range fieldsNode.Fields {
+    fmt.Printf("  %s\n", field)
+  }
 }
 ```
 
@@ -81,11 +81,12 @@ func main() {
 
 Parse and validate field selection expressions like:
 
-```
+```text
 first_name, last_name, email
 ```
 
 The parser ensures that:
+
 - Only allowed fields are requested
 - No empty field names are provided
 - The syntax is valid
@@ -120,6 +121,7 @@ The filter parser supports:
 - **Literals**: strings, integers, floats, booleans
 
 The parser ensures that:
+
 - Only allowed fields are used in filter conditions
 - The syntax is valid
 - The expression forms a valid abstract syntax tree (AST)
