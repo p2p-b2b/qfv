@@ -12,10 +12,10 @@ type QFVSortError struct {
 
 func (e *QFVSortError) Error() string {
 	if e.Field != "" {
-		return fmt.Sprintf("sort error on field '%s': %s", e.Field, e.Message)
+		return fmt.Sprintf("error on field '%s': %s", e.Field, e.Message)
 	}
 
-	return fmt.Sprintf("sort error: %s", e.Message)
+	return fmt.Sprintf("error: %s", e.Message)
 }
 
 // SortDirection represents the sorting direction in sort expressions

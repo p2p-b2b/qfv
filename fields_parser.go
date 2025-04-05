@@ -5,6 +5,19 @@ import (
 	"strings"
 )
 
+type QFVFieldsError struct {
+	Field   string
+	Message string
+}
+
+func (e *QFVFieldsError) Error() string {
+	if e.Field != "" {
+		return fmt.Sprintf("error on field '%s': %s", e.Field, e.Message)
+	}
+
+	return fmt.Sprintf("error: %s", e.Message)
+}
+
 // FieldsNode represents the fields part of the query
 type FieldsNode struct {
 	Fields []string
@@ -35,7 +48,7 @@ func NewFieldsParser(allowedFields []string) *FieldsParser {
 // Parse parses the fields parameter
 func (p *FieldsParser) Parse(input string) (FieldsNode, error) {
 	if input == "" {
-		return FieldsNode{}, fmt.Errorf("empty input expression")
+		return FieldsNode{}, &QFVFieldsError{Message: "empty input expression"}
 	}
 
 	parts := strings.Split(input, ",")
@@ -44,11 +57,11 @@ func (p *FieldsParser) Parse(input string) (FieldsNode, error) {
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
-			return FieldsNode{}, fmt.Errorf("empty field expression: %s", input)
+			return FieldsNode{}, &QFVFieldsError{Field: part, Message: "empty field expression"}
 		}
 
 		if _, exists := p.allowedFieldsFields[part]; !exists {
-			return FieldsNode{}, fmt.Errorf("unknown field: %s", part)
+			return FieldsNode{}, &QFVFieldsError{Field: part, Message: "unknown field"}
 		}
 
 		fields = append(fields, part)
