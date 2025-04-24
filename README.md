@@ -95,11 +95,12 @@ The parser ensures that:
 
 Parse and validate sort expressions like:
 
-```
+```sql
 first_name ASC, created_at DESC
 ```
 
 The parser ensures that:
+
 - Only allowed fields are used for sorting
 - Each field has a valid direction (ASC or DESC)
 - The syntax is valid
@@ -108,7 +109,7 @@ The parser ensures that:
 
 Parse and validate complex filter expressions like:
 
-```
+```sql
 first_name = 'John' AND last_name = 'Doe' OR email = 'example@example.com'
 ```
 
@@ -116,7 +117,7 @@ The filter parser supports:
 
 - **Logical operators**: AND, OR, NOT
 - **Comparison operators**: =, <>, !=, <, <=, >, >=
-- **Special operators**: LIKE, IN, BETWEEN, IS NULL, IS NOT NULL, DISTINCT
+- **Special operators**: LIKE, IN, BETWEEN, IS NULL, IS NOT NULL, DISTINCT, SIMILAR TO
 - **Grouping** with parentheses
 - **Literals**: strings, integers, floats, booleans
 
@@ -151,6 +152,8 @@ The parser ensures that:
 "age BETWEEN 20 AND 30"
 "middle_name IS NULL"
 "middle_name IS NOT NULL"
+"name SIMILAR TO 'J%n'" // SQL standard regex
+"name NOT SIMILAR TO 'J%n'"
 
 // Complex expressions
 "(first_name = 'John' OR first_name = 'Jane') AND age > 30"

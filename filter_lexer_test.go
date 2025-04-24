@@ -239,6 +239,46 @@ func TestLexer_Navigation(t *testing.T) {
 				{Pos: scanner.Position{Line: 1, Column: 30}, Type: TokenEOF, Value: ""},
 			},
 		},
+		{
+			name:  "SIMILAR keyword only",
+			input: "name SIMILAR",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorSimilarTo, Value: "SIMILAR"},
+				{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "TO keyword only",
+			input: "name TO 'pattern'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenIdentifier, Value: "TO"},
+				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenString, Value: "'pattern'"},
+				{Pos: scanner.Position{Line: 1, Column: 18}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "NOT SIMILAR without TO",
+			input: "name NOT SIMILAR",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"},
+				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorSimilarTo, Value: "SIMILAR"},
+				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "Different casing",
+			input: "name similar tO '%pattern%'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorSimilarTo, Value: "similar"},
+				{Pos: scanner.Position{Line: 1, Column: 14}, Type: TokenIdentifier, Value: "tO"},
+				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenString, Value: "'%pattern%'"},
+				{Pos: scanner.Position{Line: 1, Column: 28}, Type: TokenEOF, Value: ""},
+			},
+		},
 	}
 
 	for _, tt := range tests {
