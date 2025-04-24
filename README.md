@@ -118,6 +118,11 @@ The filter parser supports:
 - **Logical operators**: AND, OR, NOT
 - **Comparison operators**: =, <>, !=, <, <=, >, >=
 - **Special operators**: LIKE, IN, BETWEEN, IS NULL, IS NOT NULL, DISTINCT, SIMILAR TO
+- **Regex operators**:
+  - `~`: Case-sensitive regex match
+  - `!~`: Case-sensitive regex non-match
+  - `~*`: Case-insensitive regex match
+  - `!~*`: Case-insensitive regex non-match
 - **Grouping** with parentheses
 - **Literals**: strings, integers, floats, booleans
 
@@ -154,6 +159,10 @@ The parser ensures that:
 "middle_name IS NOT NULL"
 "name SIMILAR TO 'J%n'" // SQL standard regex
 "name NOT SIMILAR TO 'J%n'"
+"email ~ '^[^@]+@[^@]+\.[^@]+$'" // Case-sensitive regex match
+"email !~ '^[^@]+@[^@]+\.[^@]+$'" // Case-sensitive regex non-match
+"email ~* '(?i)^admin@'" // Case-insensitive regex match (using Go regex flag)
+"email !~* '(?i)^admin@'" // Case-insensitive regex non-match (using Go regex flag)
 
 // Complex expressions
 "(first_name = 'John' OR first_name = 'Jane') AND age > 30"

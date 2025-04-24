@@ -27,6 +27,7 @@ const (
 	NodeTypeNotIn          NodeType = "NOT_IN"          // (field, values) -> name NOT IN ("John", "Doe")
 	NodeTypeSimilarTo      NodeType = "SIMILAR_TO"      // (field, pattern) -> name SIMILAR TO "pattern"
 	NodeTypeNotSimilarTo   NodeType = "NOT_SIMILAR_TO"  // (field, pattern) -> name NOT SIMILAR TO "pattern"
+	NodeTypeRegexMatch     NodeType = "REGEX_MATCH"     // (field, pattern, is_not, is_case_insensitive) -> name ~ 'pattern'
 
 	NodeTypeSort      NodeType = "SORT"       // (field, direction) -> name ASC, age DESC
 	NodeTypeSortField NodeType = "SORT_FIELD" // (field, direction) -> name ASC, age DESC
@@ -46,6 +47,28 @@ func (n *SimilarToNode) String() string {
 	return fmt.Sprintf("%s SIMILAR TO %s", n.Field.String(), n.Pattern.String())
 }
 func (n *SimilarToNode) Pos() scanner.Position { return n.pos }
+
+// RegexMatchNode represents a regex match expression (e.g., name ~ 'pattern')
+type RegexMatchNode struct {
+	baseNode
+	Field             Node
+	Pattern           Node
+	IsNot             bool // true for !~ or !~*
+	IsCaseInsensitive bool // true for ~* or !~*
+}
+
+func (n *RegexMatchNode) Type() NodeType { return NodeTypeRegexMatch }
+func (n *RegexMatchNode) String() string {
+	op := "~"
+	if n.IsNot {
+		op = "!" + op
+	}
+	if n.IsCaseInsensitive {
+		op = op + "*"
+	}
+	return fmt.Sprintf("%s %s %s", n.Field.String(), op, n.Pattern.String())
+}
+func (n *RegexMatchNode) Pos() scanner.Position { return n.pos }
 
 // String returns the string representation of the NodeType
 func (nt NodeType) String() string {

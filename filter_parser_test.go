@@ -552,6 +552,99 @@ func TestFilterParser_Parse(t *testing.T) {
 				}
 			},
 		},
+		// ---- Regex Operator Tests ----
+		{
+			name:          "Regex Match CS (~)",
+			input:         "name ~ '^start.*end$'",
+			allowedFields: []string{"name"},
+			wantErr:       false,
+			checkNode: func(t *testing.T, node Node) {
+				regexNode, ok := node.(*RegexMatchNode)
+				if !ok {
+					t.Fatalf("expected RegexMatchNode, got %T", node)
+				}
+				if regexNode.IsNot {
+					t.Errorf("expected IsNot to be false")
+				}
+				if regexNode.IsCaseInsensitive {
+					t.Errorf("expected IsCaseInsensitive to be false")
+				}
+				field, _ := regexNode.Field.(*IdentifierNode)
+				if field.Name != "name" {
+					t.Errorf("expected field 'name', got '%s'", field.Name)
+				}
+				pattern, _ := regexNode.Pattern.(*LiteralNode)
+				if pattern.Value != "^start.*end$" {
+					t.Errorf("expected pattern '^start.*end$', got '%v'", pattern.Value)
+				}
+			},
+		},
+		{
+			name:          "Not Regex Match CS (!~)",
+			input:         "name !~ '^start.*end$'",
+			allowedFields: []string{"name"},
+			wantErr:       false,
+			checkNode: func(t *testing.T, node Node) {
+				regexNode, ok := node.(*RegexMatchNode)
+				if !ok {
+					t.Fatalf("expected RegexMatchNode, got %T", node)
+				}
+				if !regexNode.IsNot {
+					t.Errorf("expected IsNot to be true")
+				}
+				if regexNode.IsCaseInsensitive {
+					t.Errorf("expected IsCaseInsensitive to be false")
+				}
+			},
+		},
+		{
+			name:          "Regex Match CI (~*)",
+			input:         "name ~* '^start.*end$'",
+			allowedFields: []string{"name"},
+			wantErr:       false,
+			checkNode: func(t *testing.T, node Node) {
+				regexNode, ok := node.(*RegexMatchNode)
+				if !ok {
+					t.Fatalf("expected RegexMatchNode, got %T", node)
+				}
+				if regexNode.IsNot {
+					t.Errorf("expected IsNot to be false")
+				}
+				if !regexNode.IsCaseInsensitive {
+					t.Errorf("expected IsCaseInsensitive to be true")
+				}
+			},
+		},
+		{
+			name:          "Not Regex Match CI (!~*)",
+			input:         "name !~* '^start.*end$'",
+			allowedFields: []string{"name"},
+			wantErr:       false,
+			checkNode: func(t *testing.T, node Node) {
+				regexNode, ok := node.(*RegexMatchNode)
+				if !ok {
+					t.Fatalf("expected RegexMatchNode, got %T", node)
+				}
+				if !regexNode.IsNot {
+					t.Errorf("expected IsNot to be true")
+				}
+				if !regexNode.IsCaseInsensitive {
+					t.Errorf("expected IsCaseInsensitive to be true")
+				}
+			},
+		},
+		{
+			name:          "Syntax error - Regex operator without pattern",
+			input:         "name ~",
+			allowedFields: []string{"name"},
+			wantErr:       true,
+		},
+		{
+			name:          "Syntax error - Regex operator with wrong pattern type",
+			input:         "name ~* 123",
+			allowedFields: []string{"name"},
+			wantErr:       true, // Expect error because pattern should be string
+		},
 	}
 
 	for _, tt := range tests {

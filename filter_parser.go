@@ -201,6 +201,27 @@ func (p *FilterParser) parseComparison() Node {
 		case TokenOperatorSimilarTo:
 			p.nextToken() // Consume SIMILAR
 			return p.parseSimilarToOperator(field)
+		case TokenOperatorRegexMatchCS, TokenOperatorNotRegexMatchCS, TokenOperatorRegexMatchCI, TokenOperatorNotRegexMatchCI:
+			opToken := p.currentToken
+			p.nextToken() // Consume regex operator
+			patternNode := p.parsePrimary()
+
+			// Check if the pattern is a string literal
+			patternLiteral, ok := patternNode.(*LiteralNode)
+			if !ok || patternLiteral.Kind != reflect.String {
+				p.addError(&QFVFilterError{Message: fmt.Sprintf("expected string pattern for regex operator %s, got %s", opToken.Type, patternNode.Type())})
+				// Return the field node or the invalid pattern node on error
+				// Returning the pattern node might give slightly better context
+				return patternNode
+			}
+
+			return &RegexMatchNode{
+				baseNode:          baseNode{pos: opToken.Pos},
+				Field:             field,
+				Pattern:           patternNode, // Use the parsed node
+				IsNot:             opToken.Type == TokenOperatorNotRegexMatchCS || opToken.Type == TokenOperatorNotRegexMatchCI,
+				IsCaseInsensitive: opToken.Type == TokenOperatorRegexMatchCI || opToken.Type == TokenOperatorNotRegexMatchCI,
+			}
 		case TokenOperatorNot:
 			// Handle NOT operators (NOT IN, NOT BETWEEN, NOT LIKE, NOT SIMILAR TO, IS NOT NULL, NOT DISTINCT FROM)
 			notPos := p.currentToken.Pos
