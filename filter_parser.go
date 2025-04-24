@@ -184,35 +184,88 @@ func (p *FilterParser) parseComparison() Node {
 			TokenOperatorGreaterThan, TokenOperatorGreaterThanOrEqualTo:
 			return p.parseComparisonOperator(field)
 		case TokenOperatorLike:
-			return p.parseLikeOperator(field, false)
+			p.nextToken() // Consume LIKE
+			return p.parseLikeOperator(field)
 		case TokenOperatorIn:
-			return p.parseInOperator(field, false)
+			p.nextToken() // Consume IN
+			return p.parseInOperator(field)
 		case TokenOperatorBetween:
-			return p.parseBetweenOperator(field, false)
+			p.nextToken() // Consume BETWEEN
+			return p.parseBetweenOperator(field)
 		case TokenOperatorIsNull:
+			p.nextToken() // Consume IS
 			return p.parseIsNullOperator(field)
 		case TokenOperatorDistinct:
-			return p.parseDistinctOperator(field, false)
+			p.nextToken() // Consume DISTINCT
+			return p.parseDistinctOperator(field)
+		case TokenOperatorSimilarTo:
+			p.nextToken() // Consume SIMILAR
+			return p.parseSimilarToOperator(field)
 		case TokenOperatorNot:
-			// Handle NOT operators (NOT IN, NOT BETWEEN, NOT LIKE)
-			pos := p.currentToken.Pos
+			// Handle NOT operators (NOT IN, NOT BETWEEN, NOT LIKE, NOT SIMILAR TO, IS NOT NULL, NOT DISTINCT FROM)
+			notPos := p.currentToken.Pos
 			p.nextToken() // Consume NOT
 
+			var notExpr Node
 			switch p.currentToken.Type {
 			case TokenOperatorIn:
-				return p.parseInOperator(field, true)
+				p.nextToken() // Consume IN
+				notExpr = p.parseInOperator(field)
 			case TokenOperatorBetween:
-				return p.parseBetweenOperator(field, true)
+				p.nextToken() // Consume BETWEEN
+				notExpr = p.parseBetweenOperator(field)
 			case TokenOperatorLike:
-				return p.parseLikeOperator(field, true)
+				p.nextToken() // Consume LIKE
+				notExpr = p.parseLikeOperator(field)
+			case TokenOperatorSimilarTo:
+				p.nextToken()                             // Consume SIMILAR
+				notExpr = p.parseSimilarToOperator(field) // Expects TO next
+			case TokenOperatorIsNull: // Handle IS NOT NULL here
+				p.nextToken() // Consume IS
+				// parseIsNullOperator handles the NOT internally now based on token sequence
+				notExpr = p.parseIsNullOperator(field)
+				// Check if parseIsNullOperator correctly identified IS NOT NULL
+				if isNullNode, ok := notExpr.(*IsNullNode); !ok || !isNullNode.IsNot {
+					// If parseIsNullOperator didn't return an IsNullNode with IsNot=true,
+					// it means the sequence wasn't "IS NOT NULL".
+					// The error would have been added inside parseIsNullOperator.
+					// We might return the field or a generic error node, but returning
+					// the result from parseIsNullOperator (which might be 'field') is consistent.
+					return notExpr // Return whatever parseIsNullOperator returned on error
+				}
+				// If it was IS NOT NULL, we don't need to wrap it again
+				return notExpr
+			case TokenOperatorDistinct: // Handle NOT DISTINCT FROM here
+				p.nextToken() // Consume DISTINCT
+				// parseDistinctOperator handles the FROM internally
+				notExpr = p.parseDistinctOperator(field)
+				// Similar to IS NOT NULL, check if parseDistinctOperator failed
+				if _, ok := notExpr.(*DistinctNode); !ok {
+					return notExpr // Return error node or field
+				}
 			default:
 				p.addError(&QFVFilterError{Message: fmt.Sprintf("unexpected token after NOT: %s", p.currentToken.Type)})
+				// If NOT is followed by something unexpected, return a unary NOT node with the field
+				// This might not be the most robust error handling, but fits the previous pattern.
 				return &UnaryOperatorNode{
-					baseNode: baseNode{pos: pos},
+					baseNode: baseNode{pos: notPos},
 					Operator: TokenOperatorNot,
-					X:        field,
+					X:        field, // Apply NOT to the field itself? Or error?
 				}
 			}
+
+			// Wrap the parsed expression (LIKE, IN, BETWEEN, SIMILAR TO, DISTINCT) in a UnaryOperatorNode(NOT)
+			// Skip wrapping if it was handled internally (IS NOT NULL)
+			if _, isIsNull := notExpr.(*IsNullNode); !isIsNull {
+				return &UnaryOperatorNode{
+					baseNode: baseNode{pos: notPos},
+					Operator: TokenOperatorNot,
+					X:        notExpr,
+				}
+			}
+			// For IS NOT NULL, return the node directly as IsNot is set inside
+			return notExpr
+
 		default:
 			p.addError(&QFVFilterError{Field: field.Name, Message: "unexpected token after field"})
 			return field
@@ -237,50 +290,61 @@ func (p *FilterParser) parseComparisonOperator(field Node) Node {
 	}
 }
 
-// parseLikeOperator parses LIKE operator
-func (p *FilterParser) parseLikeOperator(field Node, isNot bool) Node {
-	pos := p.currentToken.Pos
-	p.nextToken()
-	pattern := p.parsePrimary()
-	operator := TokenOperatorLike
-	if isNot {
-		return &UnaryOperatorNode{
-			baseNode: baseNode{pos: pos},
-			Operator: TokenOperatorNot,
-			X: &BinaryOperatorNode{
-				baseNode: baseNode{pos: pos},
-				Left:     field,
-				Right:    pattern,
-				Operator: operator,
-			},
-		}
+// parseSimilarToOperator parses SIMILAR TO operator
+// Expects the current token to be TO after SIMILAR was consumed.
+func (p *FilterParser) parseSimilarToOperator(field Node) Node {
+	pos := p.lexer.Current().Pos // Use position of SIMILAR token (already consumed)
+	if p.currentToken.Type != TokenIdentifier || strings.ToUpper(p.currentToken.Value) != "TO" {
+		p.addError(&QFVFilterError{Message: "expected TO after SIMILAR"})
+		return field // Return field on error
 	}
+	p.nextToken() // Consume TO
+	pattern := p.parsePrimary()
+	return &SimilarToNode{
+		baseNode: baseNode{pos: pos},
+		Field:    field,
+		Pattern:  pattern,
+		IsNot:    false, // NOT is handled by parseComparison
+	}
+}
+
+// parseLikeOperator parses LIKE operator
+// Expects the current token to be the pattern after LIKE was consumed.
+func (p *FilterParser) parseLikeOperator(field Node) Node {
+	pos := p.lexer.Current().Pos // Use position of LIKE token (already consumed)
+	pattern := p.parsePrimary()
 	return &BinaryOperatorNode{
 		baseNode: baseNode{pos: pos},
 		Left:     field,
 		Right:    pattern,
-		Operator: operator,
+		Operator: TokenOperatorLike,
 	}
 }
 
 // parseInOperator parses IN operator
-func (p *FilterParser) parseInOperator(field Node, isNot bool) Node {
-	pos := p.currentToken.Pos
-	p.nextToken()
-
+// Expects the current token to be LPAREN after IN was consumed.
+func (p *FilterParser) parseInOperator(field Node) Node {
+	pos := p.lexer.Current().Pos // Use position of IN token (already consumed)
 	if !p.expect(TokenLPAREN) {
 		p.addError(&QFVFilterError{Message: "expected opening parenthesis after IN"})
 		return field
 	}
 
 	var values []Node
-
 	// Parse the first value
-	values = append(values, p.parsePrimary())
+	if p.currentToken.Type == TokenRPAREN {
+		p.addError(&QFVFilterError{Message: "expected at least one value after IN ("})
+	} else {
+		values = append(values, p.parsePrimary())
+	}
 
 	// Parse additional values
 	for p.currentToken.Type == TokenComma {
 		p.nextToken()
+		if p.currentToken.Type == TokenRPAREN { // Handle trailing comma
+			p.addError(&QFVFilterError{Message: "unexpected closing parenthesis after comma in IN list"})
+			break
+		}
 		values = append(values, p.parsePrimary())
 	}
 
@@ -288,29 +352,18 @@ func (p *FilterParser) parseInOperator(field Node, isNot bool) Node {
 		p.addError(&QFVFilterError{Message: "expected closing parenthesis after IN values"})
 	}
 
-	inNode := &InNode{
+	return &InNode{
 		baseNode: baseNode{pos: pos},
 		Field:    field,
-		IsNot:    false, // Always false, we'll wrap it in a UnaryOperatorNode if isNot is true
+		IsNot:    false, // NOT is handled by parseComparison
 		Values:   values,
 	}
-
-	if isNot {
-		return &UnaryOperatorNode{
-			baseNode: baseNode{pos: pos},
-			Operator: TokenOperatorNot,
-			X:        inNode,
-		}
-	}
-
-	return inNode
 }
 
 // parseBetweenOperator parses BETWEEN operator
-func (p *FilterParser) parseBetweenOperator(field Node, isNot bool) Node {
-	pos := p.currentToken.Pos
-	p.nextToken()
-
+// Expects the current token to be the lower bound after BETWEEN was consumed.
+func (p *FilterParser) parseBetweenOperator(field Node) Node {
+	pos := p.lexer.Current().Pos // Use position of BETWEEN token (already consumed)
 	lower := p.parsePrimary()
 
 	if !p.expect(TokenOperatorAnd) {
@@ -320,39 +373,28 @@ func (p *FilterParser) parseBetweenOperator(field Node, isNot bool) Node {
 
 	upper := p.parsePrimary()
 
-	betweenNode := &BetweenNode{
+	return &BetweenNode{
 		baseNode: baseNode{pos: pos},
 		Field:    field,
 		Lower:    lower,
 		Upper:    upper,
-		IsNot:    false, // Always false, we'll wrap it in a UnaryOperatorNode if isNot is true
+		IsNot:    false, // NOT is handled by parseComparison
 	}
-
-	if isNot {
-		return &UnaryOperatorNode{
-			baseNode: baseNode{pos: pos},
-			Operator: TokenOperatorNot,
-			X:        betweenNode,
-		}
-	}
-
-	return betweenNode
 }
 
-// parseIsNullOperator parses IS NULL operator
+// parseIsNullOperator parses IS [NOT] NULL operator
+// Expects the current token to be NOT or NULL after IS was consumed.
 func (p *FilterParser) parseIsNullOperator(field Node) Node {
-	pos := p.currentToken.Pos
-	p.nextToken()
-
+	pos := p.lexer.Current().Pos // Use position of IS token (already consumed)
 	isNot := false
 	if p.currentToken.Type == TokenOperatorNot {
 		isNot = true
-		p.nextToken()
+		p.nextToken() // Consume NOT
 	}
 
 	// Check for NULL
 	if p.currentToken.Type == TokenIdentifier && strings.ToUpper(p.currentToken.Value) == "NULL" {
-		p.nextToken()
+		p.nextToken() // Consume NULL
 		return &IsNullNode{
 			baseNode: baseNode{pos: pos},
 			Field:    field,
@@ -360,19 +402,35 @@ func (p *FilterParser) parseIsNullOperator(field Node) Node {
 		}
 	}
 
-	p.addError(&QFVFilterError{Message: "expected NULL after IS"})
-	return field
+	if isNot {
+		p.addError(&QFVFilterError{Message: "expected NULL after IS NOT"})
+	} else {
+		p.addError(&QFVFilterError{Message: "expected NULL or NOT NULL after IS"})
+	}
+	return field // Return field on error
 }
 
-// parseDistinctOperator parses DISTINCT operator
-func (p *FilterParser) parseDistinctOperator(field Node, isNot bool) Node {
-	pos := p.currentToken.Pos
-	p.nextToken()
+// parseDistinctOperator parses DISTINCT FROM operator
+// Expects the current token to be FROM after DISTINCT was consumed.
+func (p *FilterParser) parseDistinctOperator(field Node) Node {
+	pos := p.lexer.Current().Pos // Use position of DISTINCT token (already consumed)
+	// Expect FROM (treated as identifier by lexer)
+	if p.currentToken.Type != TokenIdentifier || strings.ToUpper(p.currentToken.Value) != "FROM" {
+		p.addError(&QFVFilterError{Message: "expected FROM after DISTINCT"})
+		return field // Return field on error
+	}
+	p.nextToken() // Consume FROM
+	// Parse the value being compared
+	_ = p.parsePrimary() // Consume the value but ignore it for now
 
+	// Note: The DistinctNode currently only holds the field and IsNot.
+	// We might need to adjust the AST node or create a new one if
+	// the `FROM value` part is significant for evaluation.
+	// For now, just return a basic DistinctNode.
 	return &DistinctNode{
 		baseNode: baseNode{pos: pos},
 		Field:    field,
-		IsNot:    isNot,
+		IsNot:    false, // NOT is handled by parseComparison
 	}
 }
 

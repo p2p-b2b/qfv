@@ -138,9 +138,9 @@ func TestLexer_Navigation(t *testing.T) {
 			input: "name IS NULL",
 			expected: []Token{
 				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
-				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorIsNull, Value: "IS"},
-				{Pos: scanner.Position{Line: 1, Column: 8}, Type: TokenIdentifier, Value: "NULL"},
-				{Pos: scanner.Position{Line: 1, Column: 12}, Type: TokenEOF, Value: ""},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorIsNull, Value: "IS"}, // IS token
+				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenIdentifier, Value: "NULL"},   // NULL token
+				{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenEOF, Value: ""},
 			},
 		},
 		{
@@ -148,9 +148,9 @@ func TestLexer_Navigation(t *testing.T) {
 			input: "name IS NOT NULL",
 			expected: []Token{
 				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
-				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorIsNull, Value: "IS"}, // Changed from IS NOT NULL
-				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenOperatorNot, Value: "NOT"},   // Added NOT token
-				{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenIdentifier, Value: "NULL"},  // Added NULL token (as Identifier)
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorIsNull, Value: "IS"}, // IS token
+				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenOperatorNot, Value: "NOT"},   // NOT token
+				{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenIdentifier, Value: "NULL"},  // NULL token
 				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenEOF, Value: ""},
 			},
 		},
@@ -159,9 +159,9 @@ func TestLexer_Navigation(t *testing.T) {
 			input: "flag IS NOT TRUE",
 			expected: []Token{
 				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "flag"},
-				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorIsNull, Value: "IS"}, // Correct: IS is its own token
-				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenOperatorNot, Value: "NOT"},   // Correct: NOT is its own token
-				{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenBoolean, Value: "TRUE"},     // Correct: TRUE is its own token
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorIsNull, Value: "IS"}, // IS token
+				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenOperatorNot, Value: "NOT"},   // NOT token
+				{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenBoolean, Value: "TRUE"},     // TRUE token
 				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenEOF, Value: ""},
 			},
 		},
@@ -170,10 +170,10 @@ func TestLexer_Navigation(t *testing.T) {
 			input: "name NOT LIKE '%John%'",
 			expected: []Token{
 				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
-				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"},    // Changed from NOT LIKE
-				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorLike, Value: "LIKE"}, // Added LIKE token
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"},    // NOT token
+				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorLike, Value: "LIKE"}, // LIKE token
 				{Pos: scanner.Position{Line: 1, Column: 15}, Type: TokenString, Value: "'%John%'"},
-				{Pos: scanner.Position{Line: 1, Column: 24}, Type: TokenEOF, Value: ""}, // Adjusted positions
+				{Pos: scanner.Position{Line: 1, Column: 24}, Type: TokenEOF, Value: ""},
 			},
 		},
 		{
@@ -181,14 +181,14 @@ func TestLexer_Navigation(t *testing.T) {
 			input: "name NOT IN ('John', 'Jane')",
 			expected: []Token{
 				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
-				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"}, // Changed from NOT IN
-				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorIn, Value: "IN"},  // Added IN token
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"}, // NOT token
+				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorIn, Value: "IN"},  // IN token
 				{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenLPAREN, Value: "("},
 				{Pos: scanner.Position{Line: 1, Column: 14}, Type: TokenString, Value: "'John'"},
 				{Pos: scanner.Position{Line: 1, Column: 20}, Type: TokenComma, Value: ","},
 				{Pos: scanner.Position{Line: 1, Column: 22}, Type: TokenString, Value: "'Jane'"},
 				{Pos: scanner.Position{Line: 1, Column: 28}, Type: TokenRPAREN, Value: ")"},
-				{Pos: scanner.Position{Line: 1, Column: 29}, Type: TokenEOF, Value: ""}, // Adjusted positions
+				{Pos: scanner.Position{Line: 1, Column: 29}, Type: TokenEOF, Value: ""},
 			},
 		},
 		{
@@ -196,12 +196,12 @@ func TestLexer_Navigation(t *testing.T) {
 			input: "age NOT BETWEEN 18 AND 30",
 			expected: []Token{
 				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "age"},
-				{Pos: scanner.Position{Line: 1, Column: 5}, Type: TokenOperatorNot, Value: "NOT"},         // Changed from NOT BETWEEN
-				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenOperatorBetween, Value: "BETWEEN"}, // Added BETWEEN token
+				{Pos: scanner.Position{Line: 1, Column: 5}, Type: TokenOperatorNot, Value: "NOT"},         // NOT token
+				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenOperatorBetween, Value: "BETWEEN"}, // BETWEEN token
 				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenInt, Value: "18"},
 				{Pos: scanner.Position{Line: 1, Column: 20}, Type: TokenOperatorAnd, Value: "AND"},
 				{Pos: scanner.Position{Line: 1, Column: 24}, Type: TokenInt, Value: "30"},
-				{Pos: scanner.Position{Line: 1, Column: 26}, Type: TokenEOF, Value: ""}, // Adjusted positions
+				{Pos: scanner.Position{Line: 1, Column: 26}, Type: TokenEOF, Value: ""},
 			},
 		},
 		{
@@ -209,11 +209,74 @@ func TestLexer_Navigation(t *testing.T) {
 			input: "name NOT DISTINCT FROM 'John'",
 			expected: []Token{
 				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
-				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"},            // Changed from NOT DISTINCT
-				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorDistinct, Value: "DISTINCT"}, // Added DISTINCT token
-				{Pos: scanner.Position{Line: 1, Column: 19}, Type: TokenIdentifier, Value: "FROM"},           // Added FROM token (assuming it's an identifier here)
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"},            // NOT token
+				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorDistinct, Value: "DISTINCT"}, // DISTINCT token
+				{Pos: scanner.Position{Line: 1, Column: 19}, Type: TokenIdentifier, Value: "FROM"},           // FROM token
 				{Pos: scanner.Position{Line: 1, Column: 24}, Type: TokenString, Value: "'John'"},
-				{Pos: scanner.Position{Line: 1, Column: 30}, Type: TokenEOF, Value: ""}, // Adjusted positions
+				{Pos: scanner.Position{Line: 1, Column: 30}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "SIMILAR TO",
+			input: "name SIMILAR TO '%John%'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorSimilarTo, Value: "SIMILAR"}, // SIMILAR token
+				{Pos: scanner.Position{Line: 1, Column: 14}, Type: TokenIdentifier, Value: "TO"},            // TO token
+				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenString, Value: "'%John%'"},
+				{Pos: scanner.Position{Line: 1, Column: 26}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "NOT SIMILAR TO",
+			input: "name NOT SIMILAR TO '%John%'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"},            // NOT token
+				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorSimilarTo, Value: "SIMILAR"}, // SIMILAR token
+				{Pos: scanner.Position{Line: 1, Column: 18}, Type: TokenIdentifier, Value: "TO"},             // TO token
+				{Pos: scanner.Position{Line: 1, Column: 21}, Type: TokenString, Value: "'%John%'"},
+				{Pos: scanner.Position{Line: 1, Column: 30}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "SIMILAR keyword only",
+			input: "name SIMILAR",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorSimilarTo, Value: "SIMILAR"},
+				{Pos: scanner.Position{Line: 1, Column: 13}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "TO keyword only",
+			input: "name TO 'pattern'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenIdentifier, Value: "TO"},
+				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenString, Value: "'pattern'"},
+				{Pos: scanner.Position{Line: 1, Column: 18}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "NOT SIMILAR without TO",
+			input: "name NOT SIMILAR",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNot, Value: "NOT"},
+				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenOperatorSimilarTo, Value: "SIMILAR"},
+				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "Different casing",
+			input: "name similar tO '%pattern%'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorSimilarTo, Value: "similar"},
+				{Pos: scanner.Position{Line: 1, Column: 14}, Type: TokenIdentifier, Value: "tO"},
+				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenString, Value: "'%pattern%'"},
+				{Pos: scanner.Position{Line: 1, Column: 28}, Type: TokenEOF, Value: ""},
 			},
 		},
 	}

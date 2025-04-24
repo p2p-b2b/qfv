@@ -212,8 +212,11 @@ func TestFilterParser_Parse(t *testing.T) {
 				if !ok {
 					t.Fatalf("expected InNode for NOT operand, got %T", unaryOp.X)
 				}
-				if inExpr.IsNot {
+				if inExpr.IsNot { // The inner InNode should have IsNot=false
 					t.Errorf("expected IsNot to be false in the InNode")
+				}
+				if len(inExpr.Values) != 2 {
+					t.Fatalf("expected 2 values in NOT IN, got %d", len(inExpr.Values))
 				}
 			},
 		},
@@ -274,7 +277,7 @@ func TestFilterParser_Parse(t *testing.T) {
 				if !ok {
 					t.Fatalf("expected BetweenNode for NOT operand, got %T", unaryOp.X)
 				}
-				if betweenExpr.IsNot {
+				if betweenExpr.IsNot { // The inner BetweenNode should have IsNot=false
 					t.Errorf("expected IsNot to be false in the BetweenNode")
 				}
 			},
@@ -328,8 +331,8 @@ func TestFilterParser_Parse(t *testing.T) {
 				if !ok {
 					t.Fatalf("expected BinaryOperatorNode for NOT operand, got %T", unaryOp.X)
 				}
-				if likeExpr.Operator != TokenOperatorLike {
-					t.Errorf("expected LIKE operator, got %s", likeExpr.Operator)
+				if likeExpr.Operator != TokenOperatorLike { // Check the inner node is LIKE
+					t.Errorf("expected LIKE operator in the inner node, got %s", likeExpr.Operator)
 				}
 			},
 		},
@@ -419,6 +422,135 @@ func TestFilterParser_Parse(t *testing.T) {
 			input:         "name = 'John' @ age > 30",
 			allowedFields: []string{"name", "age", "status"},
 			wantErr:       true,
+		},
+		{
+			name:          "SIMILAR TO operator",
+			input:         "name SIMILAR TO '%John%'",
+			allowedFields: []string{"name", "age", "status"},
+			wantErr:       false,
+			checkNode: func(t *testing.T, node Node) {
+				similarTo, ok := node.(*SimilarToNode)
+				if !ok {
+					t.Fatalf("expected SimilarToNode, got %T", node)
+				}
+				if similarTo.IsNot {
+					t.Errorf("expected IsNot to be false")
+				}
+
+				field, ok := similarTo.Field.(*IdentifierNode)
+				if !ok {
+					t.Fatalf("expected IdentifierNode for field, got %T", similarTo.Field)
+				}
+				if field.Name != "name" {
+					t.Errorf("expected field name 'name', got %s", field.Name)
+				}
+
+				pattern, ok := similarTo.Pattern.(*LiteralNode)
+				if !ok {
+					t.Fatalf("expected LiteralNode for pattern, got %T", similarTo.Pattern)
+				}
+				if pattern.Value != "%John%" {
+					t.Errorf("expected pattern '%%John%%', got %v", pattern.Value)
+				}
+			},
+		},
+		{
+			name:          "NOT SIMILAR TO operator",
+			input:         "name NOT SIMILAR TO '%John%'",
+			allowedFields: []string{"name", "age", "status"},
+			wantErr:       false,
+			checkNode: func(t *testing.T, node Node) {
+				unaryOp, ok := node.(*UnaryOperatorNode)
+				if !ok {
+					t.Fatalf("expected UnaryOperatorNode, got %T", node)
+				}
+				if unaryOp.Operator != TokenOperatorNot {
+					t.Errorf("expected NOT operator, got %s", unaryOp.Operator)
+				}
+
+				similarToExpr, ok := unaryOp.X.(*SimilarToNode)
+				if !ok {
+					t.Fatalf("expected SimilarToNode for NOT operand, got %T", unaryOp.X)
+				}
+				if similarToExpr.IsNot { // The inner SimilarToNode should have IsNot=false
+					t.Errorf("expected IsNot to be false in the SimilarToNode")
+				}
+				// Add checks for field/pattern if needed
+			},
+		},
+		{
+			name:          "SIMILAR TO with different casing",
+			input:         "name similar TO '%John%'",
+			allowedFields: []string{"name"},
+			wantErr:       false,
+			checkNode: func(t *testing.T, node Node) {
+				similarTo, ok := node.(*SimilarToNode)
+				if !ok {
+					t.Fatalf("expected SimilarToNode, got %T", node)
+				}
+				if similarTo.IsNot {
+					t.Errorf("expected IsNot to be false")
+				}
+			},
+		},
+		{
+			name:          "NOT SIMILAR TO with different casing",
+			input:         "name nOt SiMiLaR tO '%John%'",
+			allowedFields: []string{"name"},
+			wantErr:       false,
+			checkNode: func(t *testing.T, node Node) {
+				unaryOp, ok := node.(*UnaryOperatorNode)
+				if !ok {
+					t.Fatalf("expected UnaryOperatorNode, got %T", node)
+				}
+				if unaryOp.Operator != TokenOperatorNot {
+					t.Errorf("expected NOT operator")
+				}
+				_, ok = unaryOp.X.(*SimilarToNode)
+				if !ok {
+					t.Fatalf("expected SimilarToNode for NOT operand, got %T", unaryOp.X)
+				}
+			},
+		},
+		{
+			name:          "Syntax error - SIMILAR without TO",
+			input:         "name SIMILAR '%John%'",
+			allowedFields: []string{"name"},
+			wantErr:       true, // Expect error because TO is missing
+		},
+		{
+			name:          "Syntax error - NOT SIMILAR without TO",
+			input:         "name NOT SIMILAR '%John%'",
+			allowedFields: []string{"name"},
+			wantErr:       true, // Expect error because TO is missing
+		},
+		{
+			name:          "Syntax error - SIMILAR TO without pattern",
+			input:         "name SIMILAR TO",
+			allowedFields: []string{"name"},
+			wantErr:       true, // Expect error because pattern is missing
+		},
+		{
+			name:          "NOT DISTINCT FROM operator",
+			input:         "name NOT DISTINCT FROM 'John'",
+			allowedFields: []string{"name"},
+			wantErr:       false, // Assuming parser handles this now
+			checkNode: func(t *testing.T, node Node) {
+				unaryOp, ok := node.(*UnaryOperatorNode)
+				if !ok {
+					t.Fatalf("expected UnaryOperatorNode, got %T", node)
+				}
+				if unaryOp.Operator != TokenOperatorNot {
+					t.Errorf("expected NOT operator")
+				}
+				distinctExpr, ok := unaryOp.X.(*DistinctNode)
+				if !ok {
+					t.Fatalf("expected DistinctNode for NOT operand, got %T", unaryOp.X)
+				}
+				if distinctExpr.IsNot {
+					t.Errorf("expected IsNot to be false in DistinctNode")
+				}
+			},
 		},
 	}
 
