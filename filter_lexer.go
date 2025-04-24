@@ -155,11 +155,30 @@ func (l *Lexer) Parse() {
 				l.s.Scan()
 				tok = TokenOperatorNotEqualAlias
 				lit = "!="
+			} else if l.s.Peek() == '~' {
+				l.s.Scan() // Consume '~'
+				if l.s.Peek() == '*' {
+					l.s.Scan() // Consume '*'
+					tok = TokenOperatorNotRegexMatchCI
+					lit = "!~*"
+				} else {
+					tok = TokenOperatorNotRegexMatchCS
+					lit = "!~"
+				}
 			} else {
 				// Can ! be unary NOT? Let's assume keyword NOT for that.
 				// If ! is encountered alone, treat as ILLEGAL or assign a specific token if needed.
 				tok = TokenIllegal
 				lit = "!" // Keep literal for error message
+			}
+		case '~':
+			if l.s.Peek() == '*' {
+				l.s.Scan() // Consume '*'
+				tok = TokenOperatorRegexMatchCI
+				lit = "~*"
+			} else {
+				tok = TokenOperatorRegexMatchCS
+				lit = "~"
 			}
 		case '"':
 			// Special handling for the double quote character

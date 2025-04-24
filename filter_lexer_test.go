@@ -279,6 +279,74 @@ func TestLexer_Navigation(t *testing.T) {
 				{Pos: scanner.Position{Line: 1, Column: 28}, Type: TokenEOF, Value: ""},
 			},
 		},
+		// ---- Regex Operator Tests ----
+		{
+			name:  "Regex Match CS (~)",
+			input: "name ~ 'pattern'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorRegexMatchCS, Value: "~"},
+				{Pos: scanner.Position{Line: 1, Column: 8}, Type: TokenString, Value: "'pattern'"},
+				{Pos: scanner.Position{Line: 1, Column: 17}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "Not Regex Match CS (!~)",
+			input: "name !~ 'pattern'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNotRegexMatchCS, Value: "!~"},
+				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenString, Value: "'pattern'"},
+				{Pos: scanner.Position{Line: 1, Column: 18}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "Regex Match CI (~*)",
+			input: "name ~* 'pattern'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorRegexMatchCI, Value: "~*"},
+				{Pos: scanner.Position{Line: 1, Column: 9}, Type: TokenString, Value: "'pattern'"},
+				{Pos: scanner.Position{Line: 1, Column: 18}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "Not Regex Match CI (!~*)",
+			input: "name !~* 'pattern'",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNotRegexMatchCI, Value: "!~*"},
+				{Pos: scanner.Position{Line: 1, Column: 10}, Type: TokenString, Value: "'pattern'"},
+				{Pos: scanner.Position{Line: 1, Column: 19}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "Incomplete Regex Op (!)",
+			input: "name !",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenIllegal, Value: "!"},
+				{Pos: scanner.Position{Line: 1, Column: 7}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "Incomplete Regex Op (!~)", // Already covered by Not Regex Match CS
+			input: "name !~",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorNotRegexMatchCS, Value: "!~"},
+				{Pos: scanner.Position{Line: 1, Column: 8}, Type: TokenEOF, Value: ""},
+			},
+		},
+		{
+			name:  "Incomplete Regex Op (~)", // Already covered by Regex Match CS
+			input: "name ~",
+			expected: []Token{
+				{Pos: scanner.Position{Line: 1, Column: 1}, Type: TokenIdentifier, Value: "name"},
+				{Pos: scanner.Position{Line: 1, Column: 6}, Type: TokenOperatorRegexMatchCS, Value: "~"},
+				{Pos: scanner.Position{Line: 1, Column: 7}, Type: TokenEOF, Value: ""},
+			},
+		},
 	}
 
 	for _, tt := range tests {

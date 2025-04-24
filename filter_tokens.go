@@ -48,6 +48,11 @@ const (
 	TokenOperatorNotDistinct  TokenType = "NOT DISTINCT"
 	TokenOperatorSimilarTo    TokenType = "SIMILAR TO"
 	TokenOperatorNotSimilarTo TokenType = "NOT SIMILAR TO"
+	// ---- Regex Operators ----
+	TokenOperatorRegexMatchCS    TokenType = "~"   // Case-sensitive regex match
+	TokenOperatorNotRegexMatchCS TokenType = "!~"  // Case-sensitive regex non-match
+	TokenOperatorRegexMatchCI    TokenType = "~*"  // Case-insensitive regex match
+	TokenOperatorNotRegexMatchCI TokenType = "!~*" // Case-insensitive regex non-match
 )
 
 func (t TokenType) String() string {
