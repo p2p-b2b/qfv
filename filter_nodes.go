@@ -25,11 +25,27 @@ const (
 	NodeTypeNotBetween     NodeType = "NOT_BETWEEN"     // (field, lower, upper) -> age NOT BETWEEN 30 AND 40
 	NodeTypeIn             NodeType = "IN"              // (field, values) -> name IN ("John", "Doe")
 	NodeTypeNotIn          NodeType = "NOT_IN"          // (field, values) -> name NOT IN ("John", "Doe")
+	NodeTypeSimilarTo      NodeType = "SIMILAR_TO"      // (field, pattern) -> name SIMILAR TO "pattern"
+	NodeTypeNotSimilarTo   NodeType = "NOT_SIMILAR_TO"  // (field, pattern) -> name NOT SIMILAR TO "pattern"
 
 	NodeTypeSort      NodeType = "SORT"       // (field, direction) -> name ASC, age DESC
 	NodeTypeSortField NodeType = "SORT_FIELD" // (field, direction) -> name ASC, age DESC
 	NodeTypeFieldList NodeType = "FIELD_LIST" // (field, field, field) -> name, age, city
 )
+
+// SimilarToNode represents a SIMILAR TO expression (e.g., name SIMILAR TO "pattern")
+type SimilarToNode struct {
+	baseNode
+	Field   Node
+	Pattern Node
+	IsNot   bool // true for NOT SIMILAR TO
+}
+
+func (n *SimilarToNode) Type() NodeType { return NodeTypeSimilarTo }
+func (n *SimilarToNode) String() string {
+	return fmt.Sprintf("%s SIMILAR TO %s", n.Field.String(), n.Pattern.String())
+}
+func (n *SimilarToNode) Pos() scanner.Position { return n.pos }
 
 // String returns the string representation of the NodeType
 func (nt NodeType) String() string {

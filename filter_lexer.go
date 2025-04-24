@@ -59,24 +59,21 @@ func (l *Lexer) Parse() {
 				case "BETWEEN":
 					tok = TokenOperatorBetween
 				case "DISTINCT":
-					tok = TokenOperatorDistinct // Or TokenKeywordDistinct?
+					tok = TokenOperatorDistinct
+				case "SIMILAR":
+					tok = TokenOperatorSimilarTo // Treat SIMILAR as its own token
+				case "TO":
+					tok = TokenIdentifier // Treat TO as a generic identifier for now, parser will handle context
 				case "IS":
-					// Simplify: Always emit IS token. Let parser handle "IS NULL" / "IS NOT NULL".
-					tok = TokenOperatorIsNull // Using IS NULL token type for IS keyword
-					// Keep the original case for the token value
-					// fmt.Printf("tok after IS: %v, lit: %s\n", tok, lit) // Debug print removed
+					tok = TokenOperatorIsNull // Treat IS as its own token
+				case "NOT":
+					tok = TokenOperatorNot // Treat NOT as its own token
 				case "TRUE", "FALSE", "YES", "NO":
 					tok = TokenBoolean
-				case "NULL": // Handle NULL as an identifier/keyword if needed separately
-					tok = TokenIdentifier // Or a specific TokenNull? Let's use Identifier for now.
-					// Keep original case
-				case "NOT":
-					// Simplify: Always emit NOT token. Let parser handle "NOT LIKE" etc.
-					tok = TokenOperatorNot
-					// Keep original case
+				case "NULL":
+					tok = TokenIdentifier // Treat NULL as an identifier
 				default:
 					// Check if it's a potential field name or other identifier
-					// Could add validation here if needed (e.g., check against known fields)
 					tok = TokenIdentifier
 				}
 			}
